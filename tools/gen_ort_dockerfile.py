@@ -140,175 +140,182 @@ RUN dpkg --add-architecture i386
 
 # Install rocm
 RUN apt-get update && apt-get install -y gnupg2 --no-install-recommends curl && \
-curl -sL http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add - && \
-sh -c 'echo deb [arch=amd64] http://repo.radeon.com/rocm/apt/${ROCM_VERSION}/ ubuntu main > /etc/apt/sources.list.d/rocm.list'
+curl -fsSL http://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor -o /etc/apt/trusted.gpg.d/rocm-keyring.gpg && \
+sh -c 'echo deb [arch=amd64] http://repo.radeon.com/rocm/apt/${ROCM_VERSION}/ jammy main > /etc/apt/sources.list.d/rocm.list'
 
 # From docs.amd.com for installing rocm. Needed to install properly
 RUN sh -c \"echo 'Package: *\\nPin: release o=repo.radeon.com\\nPin-priority: 600' > /etc/apt/preferences.d/rocm-pin-600\"
 
 RUN apt-get update &&\
-    apt-get install -y sudo git bash build-essential rocm-dev python3-dev python3-pip miopen-hip \
-    rocblas half aria2 libnuma-dev pkg-config
+    apt-get install -y sudo git apt-utils bash build-essential curl doxygen gdb rocm-dev python3-dev python3-pip miopen-hip \
+    rocblas half aria2 libnuma-dev pkg-config ccache software-properties-common wget libnuma-dev libssl-dev zlib1g-dev
 
 RUN aria2c -q -d /tmp -o cmake-3.27.3-linux-x86_64.tar.gz \
 https://github.com/Kitware/CMake/releases/download/v3.27.3/cmake-3.27.3-linux-x86_64.tar.gz &&\
 tar -zxf /tmp/cmake-3.27.3-linux-x86_64.tar.gz --strip=1 -C /usr
 
 # Install rbuild
-RUN pip3 install https://github.com/RadeonOpenCompute/rbuild/archive/master.tar.gz numpy yapf==0.28.0
+RUN pip3 install https://github.com/RadeonOpenCompute/rbuild/archive/master.tar.gz numpy yapf==0.28.0 asciidoc CppHeaderParser setuptools wheel
 
 ENV PATH /opt/miniconda/bin:/code/cmake-3.27.3-linux-x86_64/bin:${PATH}
 # Install rocm ep dependencies
 RUN apt-get update &&\
-    apt-get install -y rocrand rccl hipsparse hipfft hipcub hipblas rocthrust hip-base rocm-device-libs hipify-clang  miopen-hip-dev rocm-cmake
+    apt-get install -y rocrand rccl rccl-dev hipsparse hipfft hipcub hipblas rocthrust hip-base rocm-device-libs hipify-clang miopen-hip-dev rocm-cmake
 """
 
-        if FLAGS.ort_migraphx:
-            if FLAGS.migraphx_version is not None:
-                df+= """ARG MIGRAPHX_VERSION={}""".format(FLAGS.migraphx_version)
-            else:
-                df+= """ARG MIGRAPHX_VERSION=develop"""
+    if FLAGS.ort_migraphx:
+        if FLAGS.migraphx_version is not None:
+            df+= """ARG MIGRAPHX_VERSION={}""".format(FLAGS.migraphx_version)
+        else:
+            df+= """ARG MIGRAPHX_VERSION=develop"""
 
-            df += """
+        df += """
 # Install MIGraphX from source
 ARG GPU_TARGETS='gfx908;gfx90a;gfx1030;gfx1100;gfx1101;gfx1102;gfx940;gfx941;gfx942'
-RUN mkdir -p /migraphx
-    RUN cd /migraphx && git clone --depth=1 --branch ${MIGRAPHX_VERSION} https://github.com/ROCm/AMDMIGraphX src
-    RUN cd /migraphx && rbuild package --cxx /opt/rocm/llvm/bin/clang++ -d /migraphx/deps -B /migraphx/build -S /migraphx/src/ -DPYTHON_EXECUTABLE=/usr/bin/python3 -DGPU_TARGETS=${GPU_TARGETS}
-    RUN dpkg -i /migraphx/build/*.deb
-    RUN rm -rf /migraphx
+
+# Workaround broken rocm packages
+RUN ln -s /opt/rocm-* /opt/rocm
+RUN echo "/opt/rocm/lib" > /etc/ld.so.conf.d/rocm.conf
+RUN echo "/opt/rocm/llvm/lib" > /etc/ld.so.conf.d/rocm-llvm.conf
+RUN ldconfig
+
+RUN mkdir /migraphx
+RUN cd /migraphx && git clone --depth=1 --branch ${MIGRAPHX_VERSION} https://github.com/ROCm/AMDMIGraphX src && cd src && rbuild package --cxx /opt/rocm/llvm/bin/clang++ -d /migraphx/deps -B /migraphx/build -DPYTHON_EXECUTABLE=/usr/bin/python3 -DBUILD_DEV=On -DGPU_TARGETS=${GPU_TARGETS} && dpkg -i /migraphx/build/*.deb
+RUN cd / && rm -rf /migraphx
     """
 
 
-        if FLAGS.ort_openvino is not None:
-            df += """
-    # Install OpenVINO
-    ARG ONNXRUNTIME_OPENVINO_VERSION
-    ENV INTEL_OPENVINO_DIR /opt/intel/openvino_${ONNXRUNTIME_OPENVINO_VERSION}
+    if FLAGS.ort_openvino is not None:
+        df += """
+# Install OpenVINO
+ARG ONNXRUNTIME_OPENVINO_VERSION
+ENV INTEL_OPENVINO_DIR /opt/intel/openvino_${ONNXRUNTIME_OPENVINO_VERSION}
 
-    # Step 1: Download and install core components
-    # Ref: https://docs.openvino.ai/2023.0/openvino_docs_install_guides_installing_openvino_from_archive_linux.html#step-1-download-and-install-the-openvino-core-components
-    RUN curl -L https://storage.openvinotoolkit.org/repositories/openvino/packages/2023.0/linux/l_openvino_toolkit_ubuntu22_2023.0.0.10926.b4452d56304_x86_64.tgz --output openvino_${ONNXRUNTIME_OPENVINO_VERSION}.tgz && \
-        tar -xf openvino_${ONNXRUNTIME_OPENVINO_VERSION}.tgz && \
-        mkdir -p ${INTEL_OPENVINO_DIR} && \
-        mv l_openvino_toolkit_ubuntu22_2023.0.0.10926.b4452d56304_x86_64/* ${INTEL_OPENVINO_DIR} && \
-        rm openvino_${ONNXRUNTIME_OPENVINO_VERSION}.tgz && \
-        (cd ${INTEL_OPENVINO_DIR}/install_dependencies && \
-            ./install_openvino_dependencies.sh -y) && \
-        ln -s ${INTEL_OPENVINO_DIR} ${INTEL_OPENVINO_DIR}/../openvino_`echo ${ONNXRUNTIME_OPENVINO_VERSION} | awk '{print substr($0,0,4)}'`
+# Step 1: Download and install core components
+# Ref: https://docs.openvino.ai/2023.0/openvino_docs_install_guides_installing_openvino_from_archive_linux.html#step-1-download-and-install-the-openvino-core-components
+RUN curl -L https://storage.openvinotoolkit.org/repositories/openvino/packages/2023.0/linux/l_openvino_toolkit_ubuntu22_2023.0.0.10926.b4452d56304_x86_64.tgz --output openvino_${ONNXRUNTIME_OPENVINO_VERSION}.tgz && \
+    tar -xf openvino_${ONNXRUNTIME_OPENVINO_VERSION}.tgz && \
+    mkdir -p ${INTEL_OPENVINO_DIR} && \
+    mv l_openvino_toolkit_ubuntu22_2023.0.0.10926.b4452d56304_x86_64/* ${INTEL_OPENVINO_DIR} && \
+    rm openvino_${ONNXRUNTIME_OPENVINO_VERSION}.tgz && \
+    (cd ${INTEL_OPENVINO_DIR}/install_dependencies && \
+        ./install_openvino_dependencies.sh -y) && \
+    ln -s ${INTEL_OPENVINO_DIR} ${INTEL_OPENVINO_DIR}/../openvino_`echo ${ONNXRUNTIME_OPENVINO_VERSION} | awk '{print substr($0,0,4)}'`
 
-    # Step 2: Configure the environment
-    # Ref: https://docs.openvino.ai/2023.0/openvino_docs_install_guides_installing_openvino_from_archive_linux.html#step-2-configure-the-environment
-    ENV InferenceEngine_DIR=$INTEL_OPENVINO_DIR/runtime/cmake
-    ENV ngraph_DIR=$INTEL_OPENVINO_DIR/runtime/cmake
-    ENV OpenVINO_DIR=$INTEL_OPENVINO_DIR/runtime/cmake
-    ENV LD_LIBRARY_PATH $INTEL_OPENVINO_DIR/runtime/lib/intel64:$LD_LIBRARY_PATH
-    ENV PKG_CONFIG_PATH=$INTEL_OPENVINO_DIR/runtime/lib/intel64/pkgconfig
-    ENV PYTHONPATH $INTEL_OPENVINO_DIR/python/python3.10:$INTEL_OPENVINO_DIR/python/python3:$PYTHONPATH
+# Step 2: Configure the environment
+# Ref: https://docs.openvino.ai/2023.0/openvino_docs_install_guides_installing_openvino_from_archive_linux.html#step-2-configure-the-environment
+ENV InferenceEngine_DIR=$INTEL_OPENVINO_DIR/runtime/cmake
+ENV ngraph_DIR=$INTEL_OPENVINO_DIR/runtime/cmake
+ENV OpenVINO_DIR=$INTEL_OPENVINO_DIR/runtime/cmake
+ENV LD_LIBRARY_PATH $INTEL_OPENVINO_DIR/runtime/lib/intel64:$LD_LIBRARY_PATH
+ENV PKG_CONFIG_PATH=$INTEL_OPENVINO_DIR/runtime/lib/intel64/pkgconfig
+ENV PYTHONPATH $INTEL_OPENVINO_DIR/python/python3.10:$INTEL_OPENVINO_DIR/python/python3:$PYTHONPATH
+"""
+
+    ## TEMPORARY: Using the tensorrt-8.0 branch until ORT 1.9 release to enable ORT backend with TRT 8.0 support.
+    # For ORT versions 1.8.0 and below the behavior will remain same. For ORT version 1.8.1 we will
+    # use tensorrt-8.0 branch instead of using rel-1.8.1
+    # From ORT 1.9 onwards we will switch back to using rel-* branches
+    if FLAGS.ort_version == "1.8.1":
+        df += """
+    #
+    # ONNX Runtime build
+    #
+    ARG ONNXRUNTIME_VERSION
+    ARG ONNXRUNTIME_REPO
+    ARG ONNXRUNTIME_BUILD_CONFIG
+
+    RUN git clone -b tensorrt-8.0 --recursive ${ONNXRUNTIME_REPO} onnxruntime && \
+        (cd onnxruntime && git submodule update --init --recursive)
+
     """
-
-        ## TEMPORARY: Using the tensorrt-8.0 branch until ORT 1.9 release to enable ORT backend with TRT 8.0 support.
-        # For ORT versions 1.8.0 and below the behavior will remain same. For ORT version 1.8.1 we will
-        # use tensorrt-8.0 branch instead of using rel-1.8.1
-        # From ORT 1.9 onwards we will switch back to using rel-* branches
-        if FLAGS.ort_version == "1.8.1":
-            df += """
-        #
-        # ONNX Runtime build
-        #
-        ARG ONNXRUNTIME_VERSION
-        ARG ONNXRUNTIME_REPO
-        ARG ONNXRUNTIME_BUILD_CONFIG
-
-        RUN git clone -b tensorrt-8.0 --recursive ${ONNXRUNTIME_REPO} onnxruntime && \
-            (cd onnxruntime && git submodule update --init --recursive)
-
-        """
-        # Use the tensorrt-8.5ea branch to use Tensor RT 8.5a to use the built-in tensorrt parser
-        elif FLAGS.ort_version == "1.12.1":
-            df += """
-        #
-        # ONNX Runtime build
-        #
-        ARG ONNXRUNTIME_VERSION
-        ARG ONNXRUNTIME_REPO
-        ARG ONNXRUNTIME_BUILD_CONFIG
+    # Use the tensorrt-8.5ea branch to use Tensor RT 8.5a to use the built-in tensorrt parser
+    elif FLAGS.ort_version == "1.12.1":
+        df += """
+    #
+    # ONNX Runtime build
+    #
+    ARG ONNXRUNTIME_VERSION
+    ARG ONNXRUNTIME_REPO
+    ARG ONNXRUNTIME_BUILD_CONFIG
 
         RUN git clone -b tensorrt-8.5ea --recursive ${ONNXRUNTIME_REPO} onnxruntime && \
             (cd onnxruntime && git submodule update --init --recursive)
 
         """
-        elif FLAGS.enable_rocm:
+    elif FLAGS.enable_rocm:
             df += """
-        #
-        # onnx runtime build
-        #
-        ARG ONNXRUNTIME_VERSION
-        ARG ONNXRUNTIME_REPO
-        ARG ONNXRUNTIME_BUILD_CONFIG
+    #
+    # onnx runtime build
+    #
+    ARG ONNXRUNTIME_VERSION
+    ARG ONNXRUNTIME_REPO
+    ARG ONNXRUNTIME_BUILD_CONFIG
 
-        run git clone -b ${ONNXRUNTIME_VERSION} --recursive ${ONNXRUNTIME_REPO} onnxruntime && \
-            (cd onnxruntime && git submodule update --init --recursive)
+    run git clone -b ${ONNXRUNTIME_VERSION} --recursive ${ONNXRUNTIME_REPO} onnxruntime && \
+        (cd onnxruntime && git submodule update --init --recursive)
 
-            """
+        """
 
-        else:
-            df += """
-        #
-        # onnx runtime build
-        #
-        arg onnxruntime_version
-        arg onnxruntime_repo
-        arg onnxruntime_build_config
+    else:
+        df += """
+    #
+    # onnx runtime build
+    #
+    arg onnxruntime_version
+    arg onnxruntime_repo
+    arg onnxruntime_build_config
 
-        run git clone -b rel-${onnxruntime_version} --recursive ${onnxruntime_repo} onnxruntime && \
-            (cd onnxruntime && git submodule update --init --recursive)
+    run git clone -b rel-${onnxruntime_version} --recursive ${onnxruntime_repo} onnxruntime && \
+        (cd onnxruntime && git submodule update --init --recursive)
 
-            """
+        """
 
-        if FLAGS.onnx_tensorrt_tag != "":
-            df += """
-        RUN (cd /workspace/onnxruntime/cmake/external/onnx-tensorrt && git fetch origin {}:ortrefbranch && git checkout ortrefbranch)
-        """.format(
-                FLAGS.onnx_tensorrt_tag
-            )
+    if FLAGS.onnx_tensorrt_tag != "":
+        df += """
+    RUN (cd /workspace/onnxruntime/cmake/external/onnx-tensorrt && git fetch origin {}:ortrefbranch && git checkout ortrefbranch)
+    """.format(
+            FLAGS.onnx_tensorrt_tag
+        )
 
-        ep_flags = ""
-        if FLAGS.enable_gpu:
-            ep_flags = "--use_cuda"
-            if FLAGS.cuda_version is not None:
-                ep_flags += ' --cuda_version "{}"'.format(FLAGS.cuda_version)
-            if FLAGS.cuda_home is not None:
-                ep_flags += ' --cuda_home "{}"'.format(FLAGS.cuda_home)
-            if FLAGS.cudnn_home is not None:
-                ep_flags += ' --cudnn_home "{}"'.format(FLAGS.cudnn_home)
-            if FLAGS.ort_tensorrt:
-                ep_flags += " --use_tensorrt"
-                if FLAGS.ort_version >= "1.12.1":
-                    ep_flags += " --use_tensorrt_builtin_parser"
-                if FLAGS.tensorrt_home is not None:
-                    ep_flags += ' --tensorrt_home "{}"'.format(FLAGS.tensorrt_home)
-            cmake_defs = "CMAKE_CUDA_ARCHITECTURES"
-            cuda_archs = "\'60;61;70;75;80;86;90\'"
+    ep_flags = ""
+    if FLAGS.enable_gpu:
+        ep_flags = "--use_cuda"
+        if FLAGS.cuda_version is not None:
+            ep_flags += ' --cuda_version "{}"'.format(FLAGS.cuda_version)
+        if FLAGS.cuda_home is not None:
+            ep_flags += ' --cuda_home "{}"'.format(FLAGS.cuda_home)
+        if FLAGS.cudnn_home is not None:
+            ep_flags += ' --cudnn_home "{}"'.format(FLAGS.cudnn_home)
+    elif target_platform() == "igpu":
+        ep_flags += ' --cudnn_home "/usr/lib/aarch64-linux-gnu"'
+        if FLAGS.ort_tensorrt:
+            ep_flags += " --use_tensorrt"
+            if FLAGS.ort_version >= "1.12.1":
+                ep_flags += " --use_tensorrt_builtin_parser"
+            if FLAGS.tensorrt_home is not None:
+                ep_flags += ' --tensorrt_home "{}"'.format(FLAGS.tensorrt_home)
+        cmake_defs = "CMAKE_CUDA_ARCHITECTURES"
+        cuda_archs = "\'60;61;70;75;80;86;90\'"
 
-        if FLAGS.enable_rocm: 
-            ep_flags = "--use_rocm"
-            ep_flags += " --allow_running_as_root"
-            df += """
+    if FLAGS.enable_rocm: 
+        ep_flags = "--use_rocm"
+        ep_flags += " --allow_running_as_root"
+        df += """
     RUN export PATH="/opt/cmake/bin:$PATH"
     RUN export CXXFLAGS="-D__HIP_PLATFORM_AMD__=1 -w"
             """
-            #if FLAGS.rocm_version is not None:
-            #ep_flags += ' --rocm_version "{}"'.format(FLAGS.rocm_version)
-            if FLAGS.rocm_home is not None:
-                ep_flags += ' --rocm_home "{}"'.format(FLAGS.rocm_home)
-            if FLAGS.ort_migraphx:
-                ep_flags += " --use_migraphx"
-                if FLAGS.migraphx_home is not None:
-                    ep_flags += ' --migraphx_home "{}"'.format(FLAGS.migraphx_home)
-            cmake_defs = "CMAKE_HIP_COMPILER"
-            cuda_archs = "/opt/rocm/llvm/bin/clang++"
-            ep_flags += " --allow_running_as_root"
+        if FLAGS.rocm_version is not None:
+            ep_flags += ' --rocm_version "{}"'.format(FLAGS.rocm_version)
+        if FLAGS.rocm_home is not None:
+            ep_flags += ' --rocm_home "{}"'.format(FLAGS.rocm_home)
+        if FLAGS.ort_migraphx:
+            ep_flags += " --use_migraphx"
+            if FLAGS.migraphx_home is not None:
+                ep_flags += ' --migraphx_home "{}"'.format(FLAGS.migraphx_home)
+        cmake_defs = "CMAKE_HIP_COMPILER"
+        cuda_archs = "/opt/rocm/llvm/bin/clang++"
+        ep_flags += " --allow_running_as_root"
 
         if os.name == "posix":
             if os.getuid() == 0:
@@ -317,23 +324,30 @@ RUN mkdir -p /migraphx
         if FLAGS.ort_openvino is not None:
             ep_flags += " --use_openvino CPU_FP32"
 
+    if target_platform() == "igpu":
+        ep_flags += (
+            " --skip_tests --cmake_extra_defines 'onnxruntime_BUILD_UNIT_TESTS=OFF'"
+        )        
+        cuda_archs = "53;62;72;87"
+    elif not FLAGS.enable_rocm:
+        cuda_archs = "60;61;70;75;80;86;90"
 
-        df += """
+    df += """
     WORKDIR /workspace/onnxruntime
     ARG COMMON_BUILD_ARGS="--config ${{ONNXRUNTIME_BUILD_CONFIG}} --skip_submodule_sync --parallel --build_shared_lib \
-        --build_dir /workspace/build --cmake_extra_defines {}={} "
+    --build_dir /workspace/build --cmake_extra_defines {}={} "
     """.format(
             cmake_defs,
             cuda_archs
         )
 
-        df += """
+    df += """
     RUN ./build.sh ${{COMMON_BUILD_ARGS}} --update --build {}
     """.format(
             ep_flags
         )
 
-        df += """
+    df += """
     #
     # Copy all artifacts needed by the backend to /opt/onnxruntime
     #
@@ -357,7 +371,13 @@ RUN mkdir -p /migraphx
         /opt/onnxruntime/lib && \
         cp /workspace/build/${ONNXRUNTIME_BUILD_CONFIG}/libonnxruntime.so \
         /opt/onnxruntime/lib
-
+"""
+    if target_platform() == "igpu":
+        df += """
+RUN mkdir -p /opt/onnxruntime/bin
+"""
+    else:
+        df += """
     RUN mkdir -p /opt/onnxruntime/bin && \
         cp /workspace/build/${ONNXRUNTIME_BUILD_CONFIG}/onnxruntime_perf_test \
         /opt/onnxruntime/bin && \
@@ -388,8 +408,8 @@ RUN mkdir -p /migraphx
 
         if FLAGS.ort_migraphx:
             df += """
-    # TensorRT specific headers and libraries
-    RUN cp /workspace/onnxruntime/include/onnxruntime/core/providers/migraphx/migraphx_provider_factory.h \
+    # MIGraphX specific headers and libraries
+    RUN cp /workspace/onnxruntime/onnxruntime/core/providers/migraphx/migraphx_provider_factory.h \
         /opt/onnxruntime/include && \
         cp /workspace/build/${ONNXRUNTIME_BUILD_CONFIG}/libonnxruntime_providers_migraphx.so \
         /opt/onnxruntime/lib
@@ -442,6 +462,13 @@ RUN mkdir -p /migraphx
         done
 
     # For testing copy ONNX custom op library and model
+"""
+    if target_platform() == "igpu":
+        df += """
+RUN mkdir -p /opt/onnxruntime/test
+"""
+    else:
+        df += """
     RUN mkdir -p /opt/onnxruntime/test && \
         cp /workspace/build/${ONNXRUNTIME_BUILD_CONFIG}/libcustom_op_library.so \
         /opt/onnxruntime/test && \
@@ -611,35 +638,36 @@ RUN mkdir -p /migraphx
             dfile.write(df)
 
 
-    def preprocess_gpu_flags():
-        if target_platform() == "windows":
-            # Default to CUDA based on CUDA_PATH envvar and TensorRT in
-            # C:/tensorrt
-            if "CUDA_PATH" in os.environ:
-                if FLAGS.cuda_home is None:
-                    FLAGS.cuda_home = os.environ["CUDA_PATH"]
-                elif FLAGS.cuda_home != os.environ["CUDA_PATH"]:
-                    print("warning: --cuda-home does not match CUDA_PATH envvar")
+def preprocess_gpu_flags():
+    if target_platform() == "windows":
+        # Default to CUDA based on CUDA_PATH envvar and TensorRT in
+        # C:/tensorrt
+        if "CUDA_PATH" in os.environ:
+            if FLAGS.cuda_home is None:
+                FLAGS.cuda_home = os.environ["CUDA_PATH"]
+            elif FLAGS.cuda_home != os.environ["CUDA_PATH"]:
+                print("warning: --cuda-home does not match CUDA_PATH envvar")
 
-            if FLAGS.cudnn_home is None:
-                FLAGS.cudnn_home = FLAGS.cuda_home
+        if FLAGS.cudnn_home is None:
+            FLAGS.cudnn_home = FLAGS.cuda_home
 
-            version = None
-            m = re.match(r".*v([1-9]?[0-9]+\.[0-9]+)$", FLAGS.cuda_home)
-            if m:
-                version = m.group(1)
+        version = None
+        m = re.match(r".*v([1-9]?[0-9]+\.[0-9]+)$", FLAGS.cuda_home)
+        if m:
+            version = m.group(1)
 
-            if FLAGS.cuda_version is None:
-                FLAGS.cuda_version = version
-            elif FLAGS.cuda_version != version:
-                print("warning: --cuda-version does not match CUDA_PATH envvar")
+        if FLAGS.cuda_version is None:
+            FLAGS.cuda_version = version
+        elif FLAGS.cuda_version != version:
+            print("warning: --cuda-version does not match CUDA_PATH envvar")
 
-            if (FLAGS.cuda_home is None) or (FLAGS.cuda_version is None):
-                print("error: windows build requires --cuda-version and --cuda-home")
+        if (FLAGS.cuda_home is None) or (FLAGS.cuda_version is None):
+            print("error: windows build requires --cuda-version and --cuda-home")
 
-            if FLAGS.tensorrt_home is None:
-                FLAGS.tensorrt_home = "/tensorrt"
-        else:
+        if FLAGS.tensorrt_home is None:
+            FLAGS.tensorrt_home = "/tensorrt"
+    else:
+        if FLAGS.enable_gpu:
             if "CUDNN_VERSION" in os.environ:
                 version = None
                 m = re.match(r"([0-9]\.[0-9])\.[0-9]\.[0-9]", os.environ["CUDNN_VERSION"])
@@ -656,7 +684,8 @@ RUN mkdir -p /migraphx
 
             if FLAGS.tensorrt_home is None:
                 FLAGS.tensorrt_home = "/usr/src/tensorrt"
-                
+
+        if FLAGS.enable_rocm:
             if FLAGS.rocm_home is None:
                 FLAGS.rocm_home = "/opt/rocm/"
 
@@ -665,69 +694,69 @@ RUN mkdir -p /migraphx
 
 
 
-    if __name__ == "__main__":
-        parser = argparse.ArgumentParser()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
 
-        parser.add_argument(
-            "--triton-container",
-            type=str,
-            required=True,
-            help="Triton base container to use for ORT build.",
-        )
-        parser.add_argument("--ort-version", type=str, required=True, help="ORT version.")
-        parser.add_argument(
-            "--output", type=str, required=True, help="File to write Dockerfile to."
-        )
-        parser.add_argument(
-            "--enable-gpu", action="store_true", required=False, help="Enable GPU support"
-        )
-        parser.add_argument(
-            "--enable-rocm", action="store_true", required=False, help="Enable GPU support"
-        )
-        parser.add_argument(
-            "--ort-build-config",
-            type=str,
-            default="Release",
-            choices=["Debug", "Release", "RelWithDebInfo"],
-            help="ORT build configuration.",
-        )
-        parser.add_argument(
-            "--target-platform",
-            required=False,
-            default=None,
-            help='Target for build, can be "ubuntu", "windows" or "jetpack". If not specified, build targets the current platform.',
-        )
+    parser.add_argument(
+        "--triton-container",
+        type=str,
+        required=True,
+        help="Triton base container to use for ORT build.",
+    )
+    parser.add_argument("--ort-version", type=str, required=True, help="ORT version.")
+    parser.add_argument(
+        "--output", type=str, required=True, help="File to write Dockerfile to."
+    )
+    parser.add_argument(
+        "--enable-gpu", action="store_true", required=False, help="Enable GPU support"
+    )
+    parser.add_argument(
+        "--enable-rocm", action="store_true", required=False, help="Enable GPU support"
+    )
+    parser.add_argument(
+        "--ort-build-config",
+        type=str,
+        default="Release",
+        choices=["Debug", "Release", "RelWithDebInfo"],
+        help="ORT build configuration.",
+    )
+    parser.add_argument(
+        "--target-platform",
+        required=False,
+        default=None,
+        help='Target for build, can be "ubuntu", "windows" or "jetpack". If not specified, build targets the current platform.',
+    )
 
-        parser.add_argument(
-            "--cuda-version", type=str, required=False, help="Version for CUDA."
-        )
-        parser.add_argument(
-            "--cuda-home", type=str, required=False, help="Home directory for CUDA."
-        )
-        parser.add_argument(
-            "--rocm-version", type=str, required=False, help="Version for ROCM."
-        )
-        parser.add_argument(
-            "--rocm-home", type=str, required=False, help="Home directory for ROCM."
-        )
+    parser.add_argument(
+        "--cuda-version", type=str, required=False, help="Version for CUDA."
+    )
+    parser.add_argument(
+        "--cuda-home", type=str, required=False, help="Home directory for CUDA."
+    )
+    parser.add_argument(
+        "--rocm-version", type=str, required=False, help="Version for ROCM."
+    )
+    parser.add_argument(
+        "--rocm-home", type=str, required=False, help="Home directory for ROCM."
+    )
 
-        parser.add_argument(
-            "--cudnn-home", type=str, required=False, help="Home directory for CUDNN."
-        )
-        parser.add_argument(
-            "--ort-openvino",
-            type=str,
-            required=False,
-            help="Enable OpenVino execution provider using specified OpenVINO version.",
-        )
-        parser.add_argument(
-            "--ort-tensorrt",
-            action="store_true",
-            required=False,
-            help="Enable TensorRT execution provider.",
-        )
-        parser.add_argument(
-        "--tensorrt-home", type=str, required=False, help="Home directory for TensorRT."
+    parser.add_argument(
+        "--cudnn-home", type=str, required=False, help="Home directory for CUDNN."
+    )
+    parser.add_argument(
+        "--ort-openvino",
+        type=str,
+        required=False,
+        help="Enable OpenVino execution provider using specified OpenVINO version.",
+    )
+    parser.add_argument(
+        "--ort-tensorrt",
+        action="store_true",
+        required=False,
+        help="Enable TensorRT execution provider.",
+    )
+    parser.add_argument(
+    "--tensorrt-home", type=str, required=False, help="Home directory for TensorRT."
     )
     parser.add_argument(
         "--onnx-tensorrt-tag", type=str, default="", help="onnx-tensorrt repo tag."
@@ -746,7 +775,7 @@ RUN mkdir -p /migraphx
     parser.add_argument("--migraphx-version", type=str, default="", help="MIGraphX version.")
 
     FLAGS = parser.parse_args()
-    if FLAGS.enable_gpu:
+    if FLAGS.enable_gpu or FLAGS.enable_rocm:
         preprocess_gpu_flags()
 
     # if a tag is provided by the user, then simply use it
@@ -770,6 +799,11 @@ RUN mkdir -p /migraphx
         if FLAGS.ort_openvino is not None:
             print("warning: OpenVINO not supported for windows, ignoring")
             FLAGS.ort_openvino = None
+
+        print("Writing to output for Windows")
         dockerfile_for_windows(FLAGS.output)
+        print("Done")
     else:
+        print("Writing to output for Linux")
         dockerfile_for_linux(FLAGS.output)
+        print("Done")
