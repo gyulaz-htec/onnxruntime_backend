@@ -176,7 +176,11 @@ else()
   endif()
 
   if(NOT TRITON_BUILD_CONTAINER)
-    set(TRITON_BUILD_CONTAINER "nvcr.io/nvidia/tritonserver:${TRITON_BUILD_CONTAINER_VERSION}-py3-min")
+    if (TRITON_ENABLE_ROCM)
+      set(TRITON_BUILD_CONTAINER "rocm/pytorch:rocm6.0.2_ubuntu22.04_py3.10_pytorch_2.1.2")
+    else()
+      set(TRITON_BUILD_CONTAINER "nvcr.io/nvidia/tritonserver:${TRITON_BUILD_CONTAINER_VERSION}-py3-min")
+    endif()
   endif()
 
   set(TRITON_ONNXRUNTIME_DOCKER_IMAGE "tritonserver_onnxruntime")
@@ -232,7 +236,7 @@ endif() # TRITON_ENABLE_GPU
 # ROCM
 #
 if(${TRITON_ENABLE_ROCM})
-  find_package(HIPToolkit REQUIRED)
+  find_package(hip REQUIRED)
 endif() # TRITON_ENABLE_ROCM
 
 #
@@ -364,9 +368,10 @@ if(${TRITON_ENABLE_ROCM})
   target_link_libraries(
     triton-onnxruntime-backend
     PRIVATE
-      CUDA::hiprt
+      hip::host
   )
-endif()  # TRITON_ENABLE_ROCM
+endif() #TRITON_ENABLE_ROCM
+
 
 if(${TRITON_ENABLE_ONNXRUNTIME_OPENVINO})
   target_link_libraries(
@@ -395,10 +400,13 @@ if(TRITON_ONNXRUNTIME_DOCKER_BUILD)
   endif() # TRITON_BUILD_CUDNN_HOME
   if(NOT ${TRITON_BUILD_TENSORRT_HOME} STREQUAL "")
     set(_GEN_FLAGS ${_GEN_FLAGS} "--tensorrt-home=${TRITON_BUILD_TENSORRT_HOME}")
+<<<<<<< HEAD
     set(_GEN_FLAGS ${_GEN_FLAGS} "--trt-version=\"${TRT_VERSION}\" --onnx-tensorrt-tag=\"${TRITON_ONNX_TENSORRT_REPO_TAG}") 
+=======
+>>>>>>> 4bb23b2b173c94f6ad64ecc6d9035519cd53c591
   endif() # TRITON_BUILD_TENSORRT_HOME
   if(${TRITON_ENABLE_ONNXRUNTIME_TENSORRT})
-    set(_GEN_FLAGS ${_GEN_FLAGS} "--ort-tensorrt")
+    set(_GEN_FLAGS ${_GEN_FLAGS} "--ort-tensorrt --trt-version=${TRT_VERSION} --onnx-tensorrt-tag=${TRITON_ONNX_TENSORRT_REPO_TAG}")
   endif() # TRITON_ENABLE_ONNXRUNTIME_TENSORRT
   if(${TRITON_ENABLE_ONNXRUNTIME_OPENVINO})
     set(_GEN_FLAGS ${_GEN_FLAGS} "--ort-openvino=${TRITON_BUILD_ONNXRUNTIME_OPENVINO_VERSION}")
