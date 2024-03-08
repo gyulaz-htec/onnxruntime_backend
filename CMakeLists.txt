@@ -175,17 +175,19 @@ else()
       "TRITON_BUILD_ONNXRUNTIME_VERSION requires TRITON_BUILD_CONTAINER or TRITON_BUILD_CONTAINER_VERSION")
   endif()
 
+  set(TRITON_ONNXRUNTIME_DOCKER_IMAGE "tritonserver_onnxruntime")
+  set(TRITON_ONNXRUNTIME_DOCKER_MEMORY "8g")
+  set(TRITON_ONNXRUNTIME_INCLUDE_PATHS "${CMAKE_CURRENT_BINARY_DIR}/onnxruntime/include")
+
   if(NOT TRITON_BUILD_CONTAINER)
     if (TRITON_ENABLE_ROCM)
-      set(TRITON_BUILD_CONTAINER "rocm/pytorch:rocm6.0.2_ubuntu22.04_py3.10_pytorch_2.1.2")
-    else()
+    set(TRITON_BUILD_CONTAINER "rocm/pytorch:rocm6.0.2_ubuntu22.04_py3.10_pytorch_2.1.2")
+    set(TRITON_ONNXRUNTIME_INCLUDE_PATHS "${TRITON_ONNXRUNTIME_INCLUDE_PATHS} /opt/rocm/include/hip")
+  else()
       set(TRITON_BUILD_CONTAINER "nvcr.io/nvidia/tritonserver:${TRITON_BUILD_CONTAINER_VERSION}-py3-min")
     endif()
   endif()
 
-  set(TRITON_ONNXRUNTIME_DOCKER_IMAGE "tritonserver_onnxruntime")
-  set(TRITON_ONNXRUNTIME_DOCKER_MEMORY "8g")
-  set(TRITON_ONNXRUNTIME_INCLUDE_PATHS "${CMAKE_CURRENT_BINARY_DIR}/onnxruntime/include")
   set(TRITON_ONNXRUNTIME_LIB_PATHS "${CMAKE_CURRENT_BINARY_DIR}/onnxruntime/lib")
   if (WIN32)
     set(ONNXRUNTIME_LIBRARY "onnxruntime")
@@ -372,7 +374,6 @@ if(${TRITON_ENABLE_ROCM})
   )
 endif() #TRITON_ENABLE_ROCM
 
-
 if(${TRITON_ENABLE_ONNXRUNTIME_OPENVINO})
   target_link_libraries(
     triton-onnxruntime-backend
@@ -400,10 +401,6 @@ if(TRITON_ONNXRUNTIME_DOCKER_BUILD)
   endif() # TRITON_BUILD_CUDNN_HOME
   if(NOT ${TRITON_BUILD_TENSORRT_HOME} STREQUAL "")
     set(_GEN_FLAGS ${_GEN_FLAGS} "--tensorrt-home=${TRITON_BUILD_TENSORRT_HOME}")
-<<<<<<< HEAD
-    set(_GEN_FLAGS ${_GEN_FLAGS} "--trt-version=\"${TRT_VERSION}\" --onnx-tensorrt-tag=\"${TRITON_ONNX_TENSORRT_REPO_TAG}") 
-=======
->>>>>>> 4bb23b2b173c94f6ad64ecc6d9035519cd53c591
   endif() # TRITON_BUILD_TENSORRT_HOME
   if(${TRITON_ENABLE_ONNXRUNTIME_TENSORRT})
     set(_GEN_FLAGS ${_GEN_FLAGS} "--ort-tensorrt --trt-version=${TRT_VERSION} --onnx-tensorrt-tag=${TRITON_ONNX_TENSORRT_REPO_TAG}")
