@@ -614,6 +614,7 @@ ModelState::LoadModel(
       }
     }
 
+#ifdef TRITON_ENABLE_GPU
     // Default GPU execution provider.
     // Using default values for everything other than device id and cuda
     // stream
@@ -657,6 +658,66 @@ ModelState::LoadModel(
             .c_str());
   }
 #endif  // TRITON_ENABLE_GPU
+
+#ifdef TRITON_ENABLE_ROCM
+    // Default AMD GPU execution provider using ROCm
+    // Using default values for everything other than device id and ROCM
+    // stream
+    OrtROCMProviderOptions rocm_options;
+    rocm_options.device_id = instance_group_device_id;
+    rocm_options.has_user_compute_stream = stream != nullptr ? 1 : 0;
+    rocm_options.user_compute_stream =
+        stream != nullptr ? (void*)stream : nullptr,
+    rocm_options.default_memory_arena_cfg = nullptr;
+
+    {
+      // Parse ROCm EP configurations
+      triton::common::TritonJson::Value params;
+      if (model_config_.Find("parameters", &params)) {
+        int miopen_conv_algo_search = 0;
+        RETURN_IF_ERROR(TryParseModelStringParameter(
+            params, "miopen_conv_algo_search", &miopen_conv_algo_search, 0));
+        rocm_options.miopen_conv_algo_search =
+            static_cast<OrtMIOPENConvAlgoSearch>(miopen_conv_algo_search);
+
+        RETURN_IF_ERROR(TryParseModelStringParameter(
+            params, "gpu_mem_limit", &rocm_options.gpu_mem_limit,
+            std::numeric_limits<size_t>::max()));
+
+        RETURN_IF_ERROR(TryParseModelStringParameter(
+            params, "arena_extend_strategy",
+            &rocm_options.arena_extend_strategy, 0));
+
+        RETURN_IF_ERROR(TryParseModelStringParameter(
+            params, "do_copy_in_default_stream",
+            &rocm_options.do_copy_in_default_stream, true));
+
+        RETURN_IF_ERROR(TryParseModelStringParameter(
+            params, "tunable_op_enable",
+            &rocm_options.tunable_op_enable, true));
+
+        RETURN_IF_ERROR(TryParseModelStringParameter(
+            params, "tunable_op_tuning_enable",
+            &rocm_options.tunable_op_tuning_enable, true));
+
+        int tunable_op_max_tuning_ms = 0;
+        RETURN_IF_ERROR(TryParseModelStringParameter(
+            params, "tunable_op_max_tuning_duration_ms",
+            &rocm_options.tunable_op_max_tuning_duration_ms, &tunable_op_max_tuning_ms));
+      }
+    }
+
+    RETURN_IF_ORT_ERROR(ort_api->SessionOptionsAppendExecutionProvider_ROCM(
+        soptions, &ROCM_options));
+    LOG_MESSAGE(
+        TRITONSERVER_LOG_VERBOSE,
+        (std::string("ROCM Execution Accelerator is set for '") + Name() +
+         "' on device " + std::to_string(instance_group_device_id))
+            .c_str());
+  }
+#endif  // TRITON_ENABLE_ROCM
+
+#endif  // TRITON_ENABLE_GPU || TRITON_ENABLE_ROCM
 
   // CPU execution providers
   {
