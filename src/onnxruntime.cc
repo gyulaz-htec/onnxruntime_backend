@@ -1950,7 +1950,7 @@ ModelInstanceState::ProcessRequests(
   // Wait for any in-flight input tensor copies to complete.
 #ifdef TRITON_ENABLE_ROCM
   if (cuda_copy) {
-    hipStreamSynchronize(CudaStream());
+    static_cast<void>(hipStreamSynchronize(static_cast<hipStream_t>(CudaStream())));
   }
 #endif
 
@@ -2324,7 +2324,8 @@ ModelInstanceState::SetStringInputTensor(
 #ifdef TRITON_ENABLE_ROCM
   // Synchronize to ensure the buffer is ready to be modified
   if (*cuda_copy) {
-    hipStreamSynchronize(CudaStream());
+    static_cast<void>(hipStreamSynchronize(static_cast<hipStream_t>(CudaStream())));
+
     *cuda_copy = false;
   }
 #endif  // TRITON_ENABLE_ROCM
