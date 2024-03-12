@@ -579,7 +579,7 @@ ModelState::LoadModel(
                     int use_native_calibration_table;
                     RETURN_IF_ERROR(ParseIntValue(
                         value_string, &use_native_calibration_table));
-                    migx_options.migx_use_native_calibration_table =
+                    migx_options.migraphx_use_native_calibration_table =
                         use_native_calibration_table;
                   } else {
                     return TRITONSERVER_ErrorNew(
@@ -674,11 +674,10 @@ ModelState::LoadModel(
       // Parse ROCm EP configurations
       triton::common::TritonJson::Value params;
       if (model_config_.Find("parameters", &params)) {
-        int miopen_conv_algo_search = 0;
+        int miopen_conv_exhaustive_search = 0;
         RETURN_IF_ERROR(TryParseModelStringParameter(
-            params, "miopen_conv_algo_search", &miopen_conv_algo_search, 0));
-        rocm_options.miopen_conv_algo_search =
-            static_cast<OrtMIOPENConvAlgoSearch>(miopen_conv_algo_search);
+            params, "miopen_conv_exhaustive_search", &miopen_conv_exhaustive_search, 0));
+        rocm_options.miopen_conv_exhaustive_search = miopen_conv_exhaustive_search;
 
         RETURN_IF_ERROR(TryParseModelStringParameter(
             params, "gpu_mem_limit", &rocm_options.gpu_mem_limit,
@@ -702,13 +701,13 @@ ModelState::LoadModel(
 
         int tunable_op_max_tuning_ms = 0;
         RETURN_IF_ERROR(TryParseModelStringParameter(
-            params, "tunable_op_max_tuning_duration_ms",
-            &rocm_options.tunable_op_max_tuning_duration_ms, &tunable_op_max_tuning_ms));
+            params, "tunable_op_max_tuning_duration_ms", &tunable_op_max_tuning_ms, 0));
+        rocm_options.tunable_op_max_tuning_duration_ms = tunable_op_max_tuning_ms;
       }
     }
 
     RETURN_IF_ORT_ERROR(ort_api->SessionOptionsAppendExecutionProvider_ROCM(
-        soptions, &ROCM_options));
+        soptions, &rocm_options));
     LOG_MESSAGE(
         TRITONSERVER_LOG_VERBOSE,
         (std::string("ROCM Execution Accelerator is set for '") + Name() +
