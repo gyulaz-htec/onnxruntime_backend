@@ -44,7 +44,7 @@
 #endif  // TRITON_ENABLE_GPU
 
 #ifdef TRITON_ENABLE_ROCM
-#include <hip_runtime_api.h>
+#include <hip/hip_runtime_api.h>
 #endif  // TRITON_ENABLE_ROCM
 
 
@@ -421,7 +421,7 @@ ModelState::LoadModel(
   // will check it.
 
   // GPU execution providers
-#ifdef TRITON_ENABLE_GPU
+#if defined(TRITON_ENABLE_GPU) || defined(TRITON_ENABLE_ROCM)
   if ((instance_group_kind == TRITONSERVER_INSTANCEGROUPKIND_GPU) ||
       (instance_group_kind == TRITONSERVER_INSTANCEGROUPKIND_AUTO)) {
     triton::common::TritonJson::Value optimization;
@@ -537,6 +537,73 @@ ModelState::LoadModel(
               continue;
             }
 #endif  // TRITON_ENABLE_ONNXRUNTIME_TENSORRT
+#ifdef TRITON_ENABLE_ONNXRUNTIME_MIGRAPHX
+            if (name == kMIGraphXExecutionAccelerator) {
+              // create MIGraphX options with default values
+              std::string int8_calibration_table_name;
+              OrtMIGraphXProviderOptions migx_options{
+                  instance_group_device_id,
+                  0,        // migraphx_fp16_enable
+                  0,        // migraphx_int8_enable
+                  0,        // migraphx_use_native_calibration_table
+                  nullptr,  // migraphx_int8_calibration_table_name
+              };
+              // Validate and set parameters
+              triton::common::TritonJson::Value params;
+              if (ea.Find("parameters", &params)) {
+                std::vector<std::string> param_keys;
+                RETURN_IF_ERROR(params.Members(&param_keys));
+                for (const auto& param_key : param_keys) {
+                  std::string value_string;
+                  if (param_key == "precision_mode") {
+                    RETURN_IF_ERROR(params.MemberAsString(
+                        param_key.c_str(), &value_string));
+                    if (value_string == "FP16") {
+                      migx_options.migraphx_fp16_enable = 1;
+                    } else if (value_string == "INT8") {
+                      migx_options.migraphx_int8_enable = 1;
+                    } else if (value_string != "FP32") {
+                      RETURN_ERROR_IF_FALSE(
+                          false, TRITONSERVER_ERROR_INVALID_ARG,
+                          std::string("unsupported precision mode '") +
+                              value_string + "' is requested");
+                    }
+                  } else if (param_key == "int8_calibration_table_name") {
+                    RETURN_IF_ERROR(params.MemberAsString(
+                        param_key.c_str(), &int8_calibration_table_name));
+                    migx_options.migraphx_int8_calibration_table_name =
+                        int8_calibration_table_name.c_str();
+                  } else if (param_key == "int8_use_native_calibration_table") {
+                    RETURN_IF_ERROR(params.MemberAsString(
+                        param_key.c_str(), &value_string));
+                    int use_native_calibration_table;
+                    RETURN_IF_ERROR(ParseIntValue(
+                        value_string, &use_native_calibration_table));
+                    migx_options.migx_use_native_calibration_table =
+                        use_native_calibration_table;
+                  } else {
+                    return TRITONSERVER_ErrorNew(
+                        TRITONSERVER_ERROR_INVALID_ARG,
+                        std::string(
+                            "unknown parameter '" + param_key +
+                            "' is provided for MIGraphX Execution "
+                            "Accelerator")
+                            .c_str());
+                  }
+                }
+              }
+              RETURN_IF_ORT_ERROR(
+                  ort_api->SessionOptionsAppendExecutionProvider_MIGraphX(
+                      soptions, &migx_options));
+              LOG_MESSAGE(
+                  TRITONSERVER_LOG_VERBOSE,
+                  (std::string("MIGraphX Execution Accelerator is set for '") +
+                   Name() + "' on device " +
+                   std::to_string(instance_group_device_id))
+                      .c_str());
+              continue;
+            }
+#endif  // TRITON_ENABLE_ONNXRUNTIME_MIGRAPHX
             return TRITONSERVER_ErrorNew(
                 TRITONSERVER_ERROR_INVALID_ARG,
                 (std::string("unknown Execution Accelerator '") + name +
