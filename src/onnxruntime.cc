@@ -844,7 +844,7 @@ ModelState::AutoCompleteConfig()
   {
     TRITONSERVER_InstanceGroupKind kind = TRITONSERVER_INSTANCEGROUPKIND_CPU;
 
-#ifdef TRITON_ENABLE_GPU
+#if defined(TRITON_ENABLE_GPU) || defined(TRITON_ENABLE_ROCM)
     triton::common::TritonJson::Value instance_group;
     ModelConfig().Find("instance_group", &instance_group);
 
@@ -1176,6 +1176,7 @@ ModelInstanceState::ModelInstanceState(
       cuda_allocator_info_(nullptr), cpu_allocator_info_(nullptr),
       io_binding_(nullptr), output_buffer_(nullptr)
 {
+#ifdef TRITON_ENABLE_GPU
   THROW_IF_BACKEND_INSTANCE_ERROR(model_state->LoadModel(
       ArtifactFilename(), Kind(), DeviceId(), &model_path_, &session_,
       &default_allocator_, CudaStream()));
@@ -1185,6 +1186,19 @@ ModelInstanceState::ModelInstanceState(
         "Cuda", OrtAllocatorType::OrtArenaAllocator, DeviceId(),
         OrtMemTypeDefault, &cuda_allocator_info_));
   }
+#endif //TRITON_ENABLE_GPU
+
+#ifdef TRITON_ENABLE_ROCM
+  THROW_IF_BACKEND_INSTANCE_ERROR(model_state->LoadModel(
+      ArtifactFilename(), Kind(), DeviceId(), &model_path_, &session_,
+      &default_allocator_, RocmStream()));
+
+  if (Kind() == TRITONSERVER_INSTANCEGROUPKIND_GPU) {
+    THROW_IF_BACKEND_INSTANCE_ORT_ERROR(ort_api->CreateMemoryInfo(
+        "ROCm", OrtAllocatorType::OrtArenaAllocator, DeviceId(),
+        OrtMemTypeDefault, &cuda_allocator_info_));
+  }
+#endif //TRITON_ENABLE_ROCM
 
   THROW_IF_BACKEND_INSTANCE_ORT_ERROR(
       ort_api->AllocatorGetInfo(default_allocator_, &cpu_allocator_info_));
@@ -1846,7 +1860,12 @@ ModelInstanceState::ProcessRequests(
   bool cuda_copy = false;
   BackendInputCollector collector(
       requests, request_count, &responses, model_state_->TritonMemoryManager(),
+#ifdef TRITON_ENABLE_GPU
       model_state_->EnablePinnedInput(), CudaStream(), nullptr, nullptr, 0,
+#endif // TRITON_ENABLE_GPU
+#ifdef TRITON_ENABLE_ROCM
+      model_state_->EnablePinnedInput(), RocmStream(), nullptr, nullptr, 0,
+#endif // TRITON_ENABLE_ROCM
       HostPolicyName().c_str());
   RESPOND_ALL_AND_SET_TRUE_IF_ERROR(
       responses, request_count, all_response_failed,
@@ -1937,6 +1956,14 @@ ModelInstanceState::ProcessRequests(
     cudaStreamSynchronize(CudaStream());
   }
 #endif
+
+  // Wait for any in-flight input tensor copies to complete.
+#ifdef TRITON_ENABLE_ROCM
+  if (cuda_copy) {
+    hipStreamSynchronize(RocmStream());
+  }
+#endif
+
 
   uint64_t compute_start_ns = 0;
   SET_TIMESTAMP(compute_start_ns);
@@ -2271,7 +2298,12 @@ ModelInstanceState::SetStringInputTensor(
             err = CopyBuffer(
                 input_name, src_memory_type, src_memory_type_id, mem_type, 0,
                 src_byte_size, src_buffer,
+#ifdef TRITON_ENABLE_GPU
                 input_buffer + buffer_offset + input_offset, CudaStream(),
+#endif //TRITON_ENABLE_GPU
+#ifdef TRITON_ENABLE_ROCM
+                input_buffer + buffer_offset + input_offset, RocmStream(),
+#endif //TRITON_ENABLE_ROCM
                 &cuda_used);
             *cuda_copy |= cuda_used;
           }
@@ -2303,6 +2335,14 @@ ModelInstanceState::SetStringInputTensor(
     *cuda_copy = false;
   }
 #endif  // TRITON_ENABLE_GPU
+
+#ifdef TRITON_ENABLE_ROCM
+  // Synchronize to ensure the buffer is ready to be modified
+  if (*cuda_copy) {
+    hipStreamSynchronize(RocmStream());
+    *cuda_copy = false;
+  }
+#endif  // TRITON_ENABLE_ROCM
 
   // Modify input buffer and set string expected by ORT
   SetStringInputBuffer(
@@ -2444,7 +2484,12 @@ ModelInstanceState::ReadOutputTensors(
   BackendOutputResponder responder(
       requests, request_count, responses, model_state_->TritonMemoryManager(),
       model_state_->MaxBatchSize() > 0, model_state_->EnablePinnedInput(),
+#ifdef TRITON_ENABLE_GPU
       CudaStream());
+#endif //TRITON_ENABLE_GPU
+#ifdef TRITON_ENABLE_ROCM
+      RocmStream());
+#endif //TRITON_ENABLE_ROCM
 
   // Use to hold string output contents
   bool cuda_copy = false;
