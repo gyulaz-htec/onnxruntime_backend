@@ -376,8 +376,8 @@ ENV PYTHONPATH $INTEL_OPENVINO_DIR/python/python3.10:$INTEL_OPENVINO_DIR/python/
         /opt/onnxruntime/lib
 
     # workaround: version 18 is demanded even when it isn't there
-    RUN cd /opt/onnxruntime/lib
-    RUN ln -s libonnxruntime.so libonnxruntime.s0.1.18.0
+    # RUN cd /opt/onnxruntime/lib
+    # RUN ln -s libonnxruntime.so libonnxruntime.s0.1.18.0
 """
     if target_platform() == "igpu":
         df += """
