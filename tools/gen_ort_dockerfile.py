@@ -367,7 +367,6 @@ ENV PYTHONPATH $INTEL_OPENVINO_DIR/python/python3.10:$INTEL_OPENVINO_DIR/python/
         /opt/onnxruntime/include
 
 
-    RUN touch hellothere.txt
 
     RUN mkdir -p /opt/onnxruntime/lib && \
         cp /workspace/build/${ONNXRUNTIME_BUILD_CONFIG}/libonnxruntime_providers_shared.so \
@@ -376,7 +375,8 @@ ENV PYTHONPATH $INTEL_OPENVINO_DIR/python/python3.10:$INTEL_OPENVINO_DIR/python/
         /opt/onnxruntime/lib
 
     # workaround: version 18 is demanded even when it isn't there
-    # RUN cd /opt/onnxruntime/lib
+    RUN cd /opt/onnxruntime/lib
+    RUN touch hellothere.txt
     # RUN ln -s libonnxruntime.so libonnxruntime.s0.1.18.0
 """
     if target_platform() == "igpu":
