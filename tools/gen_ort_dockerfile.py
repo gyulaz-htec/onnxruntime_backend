@@ -377,7 +377,7 @@ ENV PYTHONPATH $INTEL_OPENVINO_DIR/python/python3.10:$INTEL_OPENVINO_DIR/python/
     # workaround: version 18 is demanded even when it isn't there
     RUN cd /opt/onnxruntime/lib
     RUN touch hellothere.txt
-    # RUN ln -s libonnxruntime.so libonnxruntime.s0.1.18.0
+    RUN ln -s libonnxruntime.so libonnxruntime.s0.1.18.0
 """
     if target_platform() == "igpu":
         df += """
