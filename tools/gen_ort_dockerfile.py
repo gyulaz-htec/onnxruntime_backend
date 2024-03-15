@@ -366,11 +366,18 @@ ENV PYTHONPATH $INTEL_OPENVINO_DIR/python/python3.10:$INTEL_OPENVINO_DIR/python/
         cp /workspace/onnxruntime/include/onnxruntime/core/providers/cpu/cpu_provider_factory.h \
         /opt/onnxruntime/include
 
+
+    RUN touch hellothere.txt
+
     RUN mkdir -p /opt/onnxruntime/lib && \
         cp /workspace/build/${ONNXRUNTIME_BUILD_CONFIG}/libonnxruntime_providers_shared.so \
         /opt/onnxruntime/lib && \
         cp /workspace/build/${ONNXRUNTIME_BUILD_CONFIG}/libonnxruntime.so \
         /opt/onnxruntime/lib
+
+    # workaround: version 18 is demanded even when it isn't there
+    RUN cd /opt/onnxruntime/lib
+    RUN ln -s libonnxruntime.so libonnxruntime.s0.1.18.0
 """
     if target_platform() == "igpu":
         df += """
@@ -636,6 +643,8 @@ RUN mkdir -p /opt/onnxruntime/test
     """
         with open(output_file, "w") as dfile:
             dfile.write(df)
+        print(dfile)
+        exit(1)
 
 
 def preprocess_gpu_flags():
