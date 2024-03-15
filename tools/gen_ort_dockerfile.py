@@ -376,10 +376,8 @@ ENV PYTHONPATH $INTEL_OPENVINO_DIR/python/python3.10:$INTEL_OPENVINO_DIR/python/
 
     # workaround: version 18 is demanded even when it isn't there
     RUN cd /opt/onnxruntime/lib
-    RUN touch hello_zap.txt
     # RUN ln -s libonnxruntime.so libonnxruntime.so.1.18.0
     RUN ln -s libonnxruntime.so.rel-1.17.2 libonnxruntime.so.1.17.2
-    # RUN ln -s libonnxruntime.so libonnxruntime.so.rel-1.17.2
 """
     if target_platform() == "igpu":
         df += """
@@ -645,9 +643,6 @@ RUN mkdir -p /opt/onnxruntime/test
     """
         with open(output_file, "w") as dfile:
             dfile.write(df)
-        print(dfile)
-        exit(1)
-
 
 def preprocess_gpu_flags():
     if target_platform() == "windows":
