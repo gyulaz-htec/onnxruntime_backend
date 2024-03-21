@@ -132,7 +132,7 @@ set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/
 
 message("zzzz qq ")
 
-message("$(TRITON_BACKEND_REPO_TAG)")
+message("${TRITON_BACKEND_REPO_TAG}")
 message(FATAL_ERROR "zzzz done")
 
 if (WIN32)
