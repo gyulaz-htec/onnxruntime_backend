@@ -131,7 +131,7 @@ set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/co
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 
 message("$(TRITON_BACKEND_REPO_TAG)")
-message FATAL_ERROR("done")
+message (FATAL_ERROR"done")
 
 if (WIN32)
   if(TRITON_ENABLE_ONNXRUNTIME_OPENVINO)
