@@ -127,11 +127,11 @@ set(TRT_VERSION "" CACHE STRING "TRT version for this build.")
 set(TRITON_ONNXRUNTIME_LIB_PATHS "" CACHE PATH "Paths to ONNXRuntime libraries")
 message("the tag is ${TRITON_BACKEND_REPO_TAG}")
 
-set(TRITON_BACKEND_REPO_TAG "add_migraphx_rocm_eps_brian" STRING "Tag for triton-inference-server/backend repo")
+set(TRITON_BACKEND_REPO_TAG "add_migraphx_rocm_eps_brian" CACHE STRING "Tag for triton-inference-server/backend repo")
 
 message("zzzz qq ")
 
-message("the tag is now ${TRITON_BACKEND_REPO_TAG}")
+message("the tag is now $CACHE{TRITON_BACKEND_REPO_TAG}")
 message(FATAL_ERROR "zzzz done")
 
 set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
