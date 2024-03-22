@@ -127,14 +127,15 @@ set(TRT_VERSION "" CACHE STRING "TRT version for this build.")
 set(TRITON_ONNXRUNTIME_LIB_PATHS "" CACHE PATH "Paths to ONNXRuntime libraries")
 message("the tag is ${TRITON_BACKEND_REPO_TAG}")
 
-set(TRITON_BACKEND_REPO_TAGz "add_migraphx_rocm_eps_brian" CACHE STRING "Tag for triton-inference-server/backend repo")
-set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
-set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
+set(TRITON_BACKEND_REPO_TAGz "add_migraphx_rocm_eps_brian" STRING "Tag for triton-inference-server/backend repo")
 
 message("zzzz qq ")
 
 message("the tag is now ${TRITON_BACKEND_REPO_TAGz}")
 message(FATAL_ERROR "zzzz done")
+
+set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
+set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 
 if (WIN32)
   if(TRITON_ENABLE_ONNXRUNTIME_OPENVINO)
