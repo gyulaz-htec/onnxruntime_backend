@@ -130,8 +130,10 @@ set(TRITON_BACKEND_REPO_TAG "add_migraphx_rocm_eps" CACHE STRING "Tag for triton
 set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 
-message(FATAL_ERROR
-      "debugTRITON_BACKEND_REPO_TAG = $(TRITON_BACKEND_REPO_TAG)")
+message("zzzz qq ")
+
+message("${TRITON_BACKEND_REPO_TAG}")
+message(FATAL_ERROR "zzzz done")
 
 if (WIN32)
   if(TRITON_ENABLE_ONNXRUNTIME_OPENVINO)
