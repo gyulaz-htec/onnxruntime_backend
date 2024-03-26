@@ -130,9 +130,8 @@ set(TRITON_BACKEND_REPO_TAG "add_migraphx_rocm_eps" CACHE STRING "Tag for triton
 set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 
-# workaround:  can't use TRITON_BACKEND_REPO_TAG
+# workaround:  probably not needed any more
 set(TRITON_BACKEND_REPO_TAG_ted "add_migraphx_rocm_eps" CACHE STRING "Tag for triton-inference-server/backend repo")
-message(FATAL_ERROR "zzzz qq gpu  ${TRITON_ENABLE_GPU}  rocm ${TRITON_ENABLE_ROCM}  migraphx ${TRITON_ENABLE_ONNXRUNTIME_MIGRAPHX}")
 
 if (WIN32)
   if(TRITON_ENABLE_ONNXRUNTIME_OPENVINO)
