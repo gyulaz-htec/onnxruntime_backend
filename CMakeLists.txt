@@ -131,7 +131,7 @@ set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/co
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 
 # workaround:  can't use TRITON_BACKEND_REPO_TAG
-set(TRITON_BACKEND_REPO_TAG_ted "add_migraphx_rocm_eps_brian" CACHE STRING "Tag for triton-inference-server/backend repo")
+set(TRITON_BACKEND_REPO_TAG_ted "add_migraphx_rocm_eps" CACHE STRING "Tag for triton-inference-server/backend repo")
 message("zzzz qq ${TRITON_BACKEND_REPO_TAG_ted}")
 
 if (WIN32)
