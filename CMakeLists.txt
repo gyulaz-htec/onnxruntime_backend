@@ -223,7 +223,7 @@ FetchContent_Declare(
   GIT_TAG ${TRITON_CORE_REPO_TAG}
   GIT_SHALLOW ON
 )
-MESSAGE("getting repo-backend ${TRITON_BACKEND_REPO_TAG_ted} vs ${TRITON_BACKEND_REPO_TAG} ##################")
+MESSAGE(FATAL_ERROR "getting repo-backend ${TRITON_BACKEND_REPO_TAG_ted} vs ${TRITON_BACKEND_REPO_TAG} ##################")
 FetchContent_Declare(
   repo-backend
   GIT_REPOSITORY https://github.com/TedThemistokleous/backend.git
