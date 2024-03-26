@@ -132,7 +132,7 @@ set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/
 
 # workaround:  can't use TRITON_BACKEND_REPO_TAG
 set(TRITON_BACKEND_REPO_TAG_ted "add_migraphx_rocm_eps" CACHE STRING "Tag for triton-inference-server/backend repo")
-message("zzzz qq ${TRITON_BACKEND_REPO_TAG_ted}")
+message("FATAL_ERROR zzzz qq gpu  ${TRITON_ENABLE_GPU}  rocm ${TRITON_ENABLE_ROCM}  migraphx ${TRITON_ENABLE_ONNXRUNTIME_MIGRAPHX}")
 
 if (WIN32)
   if(TRITON_ENABLE_ONNXRUNTIME_OPENVINO)
@@ -223,7 +223,6 @@ FetchContent_Declare(
   GIT_TAG ${TRITON_CORE_REPO_TAG}
   GIT_SHALLOW ON
 )
-MESSAGE(FATAL_ERROR "getting repo-backend ${TRITON_BACKEND_REPO_TAG_ted} vs ${TRITON_BACKEND_REPO_TAG} ##################")
 FetchContent_Declare(
   repo-backend
   GIT_REPOSITORY https://github.com/TedThemistokleous/backend.git
