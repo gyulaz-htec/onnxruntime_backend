@@ -1175,6 +1175,11 @@ ModelInstanceState::ModelInstanceState(
       cuda_allocator_info_(nullptr), cpu_allocator_info_(nullptr),
       io_binding_(nullptr), output_buffer_(nullptr)
 {
+
+LOG_MESSAGE(
+          TRITONSERVER_LOG_VERBOSE, "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ");
+    LOG_MESSAGE(
+          TRITONSERVER_LOG_VERBOSE, (std::to_string (Kind()).c_str() ));  
   THROW_IF_BACKEND_INSTANCE_ERROR(model_state->LoadModel(
       ArtifactFilename(), Kind(), DeviceId(), &model_path_, &session_,
       &default_allocator_, CudaStream()));
