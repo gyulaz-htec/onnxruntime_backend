@@ -1155,8 +1155,6 @@ ModelInstanceState::Create(
     ModelState* model_state, TRITONBACKEND_ModelInstance* triton_model_instance,
     ModelInstanceState** state)
 {
-LOG_MESSAGE(
-          TRITONSERVER_LOG_WARN, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
   try {
     *state = new ModelInstanceState(model_state, triton_model_instance);
   }
@@ -1177,12 +1175,7 @@ ModelInstanceState::ModelInstanceState(
       cuda_allocator_info_(nullptr), cpu_allocator_info_(nullptr),
       io_binding_(nullptr), output_buffer_(nullptr)
 {
-
-LOG_MESSAGE(
-          TRITONSERVER_LOG_WARN, "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ");
-    LOG_MESSAGE(
-          TRITONSERVER_LOG_WARN, (std::to_string (Kind()).c_str() ));  
-  THROW_IF_BACKEND_INSTANCE_ERROR(model_state->LoadModel(
+   THROW_IF_BACKEND_INSTANCE_ERROR(model_state->LoadModel(
       ArtifactFilename(), Kind(), DeviceId(), &model_path_, &session_,
       &default_allocator_, CudaStream()));
 
@@ -1195,8 +1188,6 @@ LOG_MESSAGE(
 #endif //TRITON_ENABLE_GPU
 
 #ifdef TRITON_ENABLE_ROCM
-LOG_MESSAGE(
-          TRITONSERVER_LOG_WARN, "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
   if (Kind() == TRITONSERVER_INSTANCEGROUPKIND_GPU) {
     THROW_IF_BACKEND_INSTANCE_ORT_ERROR(ort_api->CreateMemoryInfo(
         "ROCm", OrtAllocatorType::OrtArenaAllocator, DeviceId(),
@@ -1303,8 +1294,6 @@ LOG_MESSAGE(
 
 ModelInstanceState::~ModelInstanceState()
 {
-LOG_MESSAGE(
-          TRITONSERVER_LOG_WARN, "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq");
   ReleaseOrtRunResources();
   ort_api->ReleaseRunOptions(runOptions_);
   ort_api->ReleaseIoBinding(io_binding_);
