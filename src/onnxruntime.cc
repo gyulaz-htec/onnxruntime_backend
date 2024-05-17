@@ -595,6 +595,8 @@ ModelState::LoadModel(
               RETURN_IF_ORT_ERROR(
                   ort_api->SessionOptionsAppendExecutionProvider_MIGraphX(
                       soptions, &migx_options));
+              std::cout << "### IGraphX Execution Accelerator is set"
+                        << std::endl;
               LOG_MESSAGE(
                   TRITONSERVER_LOG_VERBOSE,
                   (std::string("MIGraphX Execution Accelerator is set for '") +
