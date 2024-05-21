@@ -157,9 +157,9 @@ ModelState::Create(TRITONBACKEND_Model* triton_model, ModelState** state)
   }
 
   // Auto-complete the configuration if requested...
-  bool auto_complete_config = false;
-  RETURN_IF_ERROR(TRITONBACKEND_ModelAutoCompleteConfig(
-      triton_model, &auto_complete_config));
+  bool auto_complete_config = true;
+  // RETURN_IF_ERROR(TRITONBACKEND_ModelAutoCompleteConfig(
+  //     triton_model, &auto_complete_config));
   if (auto_complete_config) {
     RETURN_IF_ERROR((*state)->AutoCompleteConfig());
     RETURN_IF_ERROR((*state)->SetModelConfig());
