@@ -105,7 +105,7 @@ option(TRITON_ENABLE_ONNXRUNTIME_TENSORRT
 option(TRITON_ENABLE_ONNXRUNTIME_ROCM
   "Enable ROCm execution provider for ONNXRuntime backend in server" OFF)
 option(TRITON_ENABLE_ONNXRUNTIME_MIGRAPHX
-  "Enable MIGraphX execution provider for ONNXRuntime backend in server" OFF)
+  "Enable MIGraphX execution provider for ONNXRuntime backend in server" ON)
 option(TRITON_ENABLE_ONNXRUNTIME_OPENVINO
   "Enable OpenVINO execution provider for ONNXRuntime backend in server" OFF)
 set(TRITON_BUILD_ROCM_VERSION "" CACHE STRING "Version of ROCm install")
