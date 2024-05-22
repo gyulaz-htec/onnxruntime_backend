@@ -696,13 +696,13 @@ ModelState::LoadModel(
       }
     }
 
-    RETURN_IF_ORT_ERROR(ort_api->SessionOptionsAppendExecutionProvider_CUDA(
-        soptions, &cuda_options));
-    LOG_MESSAGE(
-        TRITONSERVER_LOG_VERBOSE,
-        (std::string("CUDA Execution Accelerator is set for '") + Name() +
-         "' on device " + std::to_string(instance_group_device_id))
-            .c_str());
+    // RETURN_IF_ORT_ERROR(ort_api->SessionOptionsAppendExecutionProvider_CUDA(
+    //     soptions, &cuda_options));
+    // LOG_MESSAGE(
+    //     TRITONSERVER_LOG_VERBOSE,
+    //     (std::string("CUDA Execution Accelerator is set for '") + Name() +
+    //      "' on device " + std::to_string(instance_group_device_id))
+    //         .c_str());
   }
 #endif  // TRITON_ENABLE_GPU
 
@@ -753,17 +753,17 @@ ModelState::LoadModel(
       }
     }
 
-    LOG_MESSAGE(
-        TRITONSERVER_LOG_INFO,
-        std::string("@@@ Trying to set up ROCM execution provider").c_str());
+    // LOG_MESSAGE(
+    //     TRITONSERVER_LOG_INFO,
+    //     std::string("@@@ Trying to set up ROCM execution provider").c_str());
 
-    RETURN_IF_ORT_ERROR(ort_api->SessionOptionsAppendExecutionProvider_ROCM(
-        soptions, &rocm_options));
-    LOG_MESSAGE(
-        TRITONSERVER_LOG_INFO,
-        (std::string("ROCM Execution Accelerator is set for '") + Name() +
-         "' on device " + std::to_string(instance_group_device_id))
-            .c_str());
+    // RETURN_IF_ORT_ERROR(ort_api->SessionOptionsAppendExecutionProvider_ROCM(
+    //     soptions, &rocm_options));
+    // LOG_MESSAGE(
+    //     TRITONSERVER_LOG_INFO,
+    //     (std::string("ROCM Execution Accelerator is set for '") + Name() +
+    //      "' on device " + std::to_string(instance_group_device_id))
+    //         .c_str());
   }
 #endif  // TRITON_ENABLE_ROCM
 
