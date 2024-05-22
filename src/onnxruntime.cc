@@ -419,6 +419,19 @@ ModelState::LoadModel(
   std::unique_ptr<OrtSessionOptions, SessionOptionsDeleter> soptions_wrapper(
       soptions);
 
+
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO, std::string("@@@ Providers").c_str());
+  char** providers;
+  int providers_num;
+  RETURN_IF_ORT_ERROR(
+      ort_api->GetAvailableProviders(&providers, &providers_num));
+  for (int i = 0; i < providers_num; ++i)
+  {
+    LOG_MESSAGE(TRITONSERVER_LOG_INFO, providers[i]);
+  }
+  LOG_MESSAGE(TRITONSERVER_LOG_INFO, std::string("@@@@@@@@@@@@@").c_str());
+
   bool need_lock = false;
 
   // Add execution providers if they are requested.
