@@ -377,6 +377,11 @@ ModelState::LoadModel(
     const int32_t instance_group_device_id, std::string* model_path,
     OrtSession** session, OrtAllocator** default_allocator, cudaStream_t stream)
 {
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("@@@ Loading model with instance_group_kind: ") + " (" +
+       TRITONSERVER_InstanceGroupKindString(instance_group_kind) + ")")
+          .c_str());
   // Find the ONNX file that describes the model itself. If the model
   // configuration doesn't have an explicit model file specified then
   // use the default name ("model.onnx").
@@ -422,14 +427,22 @@ ModelState::LoadModel(
 
   // GPU execution providers
 #if defined(TRITON_ENABLE_GPU) || defined(TRITON_ENABLE_ROCM)
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      std::string("@@@ GPU or ROCM enabled").c_str());
   if ((instance_group_kind == TRITONSERVER_INSTANCEGROUPKIND_GPU) ||
       (instance_group_kind == TRITONSERVER_INSTANCEGROUPKIND_AUTO)) {
+    LOG_MESSAGE(
+        TRITONSERVER_LOG_INFO, std::string("@@@ Has proper instancegroupkind").c_str());
     triton::common::TritonJson::Value optimization;
     if (model_config_.Find("optimization", &optimization)) {
       triton::common::TritonJson::Value eas;
       if (optimization.Find("execution_accelerators", &eas)) {
         triton::common::TritonJson::Value gpu_eas;
         if (eas.Find("gpu_execution_accelerator", &gpu_eas)) {
+          LOG_MESSAGE(
+              TRITONSERVER_LOG_INFO,
+              std::string("@@@ gpu_execution_accelerator found ").c_str());
           for (size_t ea_idx = 0; ea_idx < gpu_eas.ArraySize(); ea_idx++) {
             triton::common::TritonJson::Value ea;
             RETURN_IF_ERROR(gpu_eas.IndexAsObject(ea_idx, &ea));
@@ -539,6 +552,9 @@ ModelState::LoadModel(
 #endif  // TRITON_ENABLE_ONNXRUNTIME_TENSORRT
 #ifdef TRITON_ENABLE_ONNXRUNTIME_MIGRAPHX
             if (name == kMIGraphXExecutionAccelerator) {
+              LOG_MESSAGE(
+                  TRITONSERVER_LOG_INFO,
+                  std::string("@@@ Enabling mgx execution provider ").c_str());
               // create MIGraphX options with default values
               std::string int8_calibration_table_name;
               OrtMIGraphXProviderOptions migx_options{
@@ -612,8 +628,24 @@ ModelState::LoadModel(
                  "' is requested")
                     .c_str());
           }
+        } else {
+          LOG_MESSAGE(
+              TRITONSERVER_LOG_INFO,
+              std::string("@@@ no gpu_execution_accelerator found").c_str());
         }
       }
+      else
+      {
+        LOG_MESSAGE(
+            TRITONSERVER_LOG_INFO,
+            std::string("@@@ no exec accelerator found").c_str());
+      }
+    } 
+    else
+    {
+      LOG_MESSAGE(
+          TRITONSERVER_LOG_INFO,
+          std::string("@@@ no optimization found").c_str());
     }
 
 #ifdef TRITON_ENABLE_GPU
@@ -708,10 +740,14 @@ ModelState::LoadModel(
       }
     }
 
+    LOG_MESSAGE(
+        TRITONSERVER_LOG_INFO,
+        std::string("@@@ Trying to set up ROCM execution provider").c_str());
+
     RETURN_IF_ORT_ERROR(ort_api->SessionOptionsAppendExecutionProvider_ROCM(
         soptions, &rocm_options));
     LOG_MESSAGE(
-        TRITONSERVER_LOG_VERBOSE,
+        TRITONSERVER_LOG_INFO,
         (std::string("ROCM Execution Accelerator is set for '") + Name() +
          "' on device " + std::to_string(instance_group_device_id))
             .c_str());
@@ -729,6 +765,10 @@ ModelState::LoadModel(
         triton::common::TritonJson::Value cpu_eas;
         if (eas.Find("cpu_execution_accelerator", &cpu_eas)) {
           for (size_t ea_idx = 0; ea_idx < cpu_eas.ArraySize(); ea_idx++) {
+            LOG_MESSAGE(
+                TRITONSERVER_LOG_INFO,
+                std::string("@@@ Setting up CPU execution provider")
+                    .c_str());
             triton::common::TritonJson::Value ea;
             RETURN_IF_ERROR(cpu_eas.IndexAsObject(ea_idx, &ea));
             std::string name;
