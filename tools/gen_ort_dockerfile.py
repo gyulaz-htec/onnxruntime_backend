@@ -181,7 +181,7 @@ RUN ldconfig
 
 RUN mkdir /migraphx
 RUN cd /migraphx && git clone --depth=1 --branch ${MIGRAPHX_VERSION} https://github.com/ROCm/AMDMIGraphX src && cd src && rbuild package --cxx /opt/rocm/llvm/bin/clang++ -d /migraphx/deps -B /migraphx/build -DPYTHON_EXECUTABLE=/usr/bin/python3 -DBUILD_DEV=On -DGPU_TARGETS=${GPU_TARGETS} && dpkg -i /migraphx/build/*.deb
-RUN cd / && rm -rf /migraphx
+# RUN cd / && rm -rf /migraphx
     """
 
 
@@ -419,7 +419,8 @@ RUN mkdir -p /opt/onnxruntime/bin
     RUN cp /workspace/onnxruntime/onnxruntime/core/providers/migraphx/migraphx_provider_factory.h \
         /opt/onnxruntime/include && \
         cp /workspace/build/${ONNXRUNTIME_BUILD_CONFIG}/libonnxruntime_providers_migraphx.so \
-        /opt/onnxruntime/lib
+        /opt/onnxruntime/lib && \
+        cp /migraphx/build/*.deb /opt/onnxruntime/lib
     """
 
         if FLAGS.ort_openvino is not None:
