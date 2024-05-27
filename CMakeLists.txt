@@ -225,7 +225,7 @@ FetchContent_Declare(
 )
 FetchContent_Declare(
   repo-backend
-  GIT_REPOSITORY https://github.com/TedThemistokleous/backend.git
+  GIT_REPOSITORY https://github.com/gyulaz-htec/backend.git
   GIT_TAG ${TRITON_BACKEND_REPO_TAG_ted}
   GIT_SHALLOW ON
 )
