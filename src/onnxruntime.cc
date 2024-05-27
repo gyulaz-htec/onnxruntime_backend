@@ -3015,16 +3015,27 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
 
   LOG_MESSAGE(
       TRITONSERVER_LOG_INFO,
-      (std::string("TRITONBACKEND_ModelInstanceInitialize: ") + name + " (" +
+      (std::string("***** TRITONBACKEND_ModelInstanceInitialize: ") + name + " (" +
        TRITONSERVER_InstanceGroupKindString(kind) + " device " +
        std::to_string(device_id) + ")")
           .c_str());
 
   // Get the model state associated with this instance's model.
   TRITONBACKEND_Model* model;
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("***** "
+                   "TRITONBACKEND_ModelInstanceInitialize::TRITONBACKEND_"
+                   "ModelInstanceModel "))
+          .c_str());
   RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceModel(instance, &model));
 
   void* vmodelstate;
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("***** "
+                   "TRITONBACKEND_ModelInstanceInitialize::TRITONBACKEND_ModelState"))
+          .c_str());
   RETURN_IF_ERROR(TRITONBACKEND_ModelState(model, &vmodelstate));
   ModelState* model_state = reinterpret_cast<ModelState*>(vmodelstate);
 
@@ -3040,16 +3051,42 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
   // Create a ModelInstanceState object and associate it with the
   // TRITONBACKEND_ModelInstance.
   ModelInstanceState* instance_state;
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string(
+           "***** "
+           "TRITONBACKEND_ModelInstanceInitialize::ModelInstanceState::Create"))
+          .c_str());
   RETURN_IF_ERROR(
       ModelInstanceState::Create(model_state, instance, &instance_state));
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string(
+           "***** "
+           "TRITONBACKEND_ModelInstanceInitialize::TRITONBACKEND_ModelInstanceSetState"))
+          .c_str());
   RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceSetState(
       instance, reinterpret_cast<void*>(instance_state)));
 
   if (lusage) {
+      LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string(
+           "***** "
+           "TRITONBACKEND_ModelInstanceInitialize::lusage enabled"))
+          .c_str());
     DeviceMemoryTracker::UntrackThreadMemoryUsage(lusage.get());
     TRITONSERVER_BufferAttributes** ba_array;
     uint32_t ba_len = 0;
+    LOG_MESSAGE(
+        TRITONSERVER_LOG_INFO, (std::string("***** "
+                                            "TRITONBACKEND_ModelInstanceInitialize::lusage->SerializeToBufferAttributes"))
+                                   .c_str());
     RETURN_IF_ERROR(lusage->SerializeToBufferAttributes(&ba_array, &ba_len));
+    LOG_MESSAGE(
+        TRITONSERVER_LOG_INFO, (std::string("***** "
+                                            "TRITONBACKEND_ModelInstanceInitialize::TRITONBACKEND_ModelInstanceReportMemoryUsage"))
+                                   .c_str());
     RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceReportMemoryUsage(
         instance, ba_array, ba_len));
   }
