@@ -1225,6 +1225,12 @@ ModelInstanceState::Create(
     ModelState* model_state, TRITONBACKEND_ModelInstance* triton_model_instance,
     ModelInstanceState** state)
 {
+    LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string(
+           "***** "
+           "ModelInstanceState::Create called"))
+          .c_str());
   try {
     *state = new ModelInstanceState(model_state, triton_model_instance);
   }
@@ -1245,7 +1251,12 @@ ModelInstanceState::ModelInstanceState(
       cuda_allocator_info_(nullptr), cpu_allocator_info_(nullptr),
       io_binding_(nullptr), output_buffer_(nullptr)
 {
-   THROW_IF_BACKEND_INSTANCE_ERROR(model_state->LoadModel(
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("****** "
+                   "ModelInstanceState::ModelInstanceState"))
+          .c_str());
+  THROW_IF_BACKEND_INSTANCE_ERROR(model_state->LoadModel(
       ArtifactFilename(), Kind(), DeviceId(), &model_path_, &session_,
       &default_allocator_, CudaStream()));
 
@@ -1258,21 +1269,50 @@ ModelInstanceState::ModelInstanceState(
 #endif //TRITON_ENABLE_GPU
 
 #ifdef TRITON_ENABLE_ROCM
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO, (std::string("****** "
+                                          "ModelInstanceState::ROCM enabled"))
+                                 .c_str());
   if (Kind() == TRITONSERVER_INSTANCEGROUPKIND_GPU) {
+    LOG_MESSAGE(
+        TRITONSERVER_LOG_INFO, (std::string("****** "
+                                            "ModelInstanceState::KIND_GPU + CreateMemoryInfo"))
+                                   .c_str());
     THROW_IF_BACKEND_INSTANCE_ORT_ERROR(ort_api->CreateMemoryInfo(
         "ROCm", OrtAllocatorType::OrtArenaAllocator, DeviceId(),
         OrtMemTypeDefault, &cuda_allocator_info_));
   }
 #endif //TRITON_ENABLE_ROCM
 
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("****** "
+                   "ModelInstanceState::AllocatorGetInfo"))
+          .c_str());
   THROW_IF_BACKEND_INSTANCE_ORT_ERROR(
       ort_api->AllocatorGetInfo(default_allocator_, &cpu_allocator_info_));
 
+
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("****** "
+                   "ModelInstanceState::CreateIoBinding"))
+          .c_str());
   THROW_IF_BACKEND_INSTANCE_ORT_ERROR(
       ort_api->CreateIoBinding(session_, &io_binding_));
 
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("****** "
+                   "ModelInstanceState::ort_api->CreateRunOptions"))
+          .c_str());
   THROW_IF_BACKEND_INSTANCE_ORT_ERROR(ort_api->CreateRunOptions(&runOptions_));
 
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("****** "
+                   "ModelInstanceState::read configs"))
+          .c_str());
   // Read configs that needs to be set in RunOptions
   triton::common::TritonJson::Value params;
   if (model_state->ModelConfig().Find("parameters", &params)) {
@@ -1295,6 +1335,10 @@ ModelInstanceState::ModelInstanceState(
     }
   }
 
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO, (std::string("****** "
+                                          "ModelInstanceState::read input configs"))
+                                 .c_str());
   size_t expected_input_cnt = 0;
   {
     triton::common::TritonJson::Value inputs;
@@ -1319,6 +1363,11 @@ ModelInstanceState::ModelInstanceState(
     }
   }
 
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("****** "
+                   "ModelInstanceState::sequence settings"))
+          .c_str());
   // If this is a sequence model then make sure that the required
   // inputs are present in the model and have the correct shape and
   // datatype.
@@ -1358,7 +1407,18 @@ ModelInstanceState::ModelInstanceState(
     }
   }
 
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("****** "
+                   "ModelInstanceState::ValidateInputs"))
+          .c_str());
   THROW_IF_BACKEND_INSTANCE_ERROR(ValidateInputs(expected_input_cnt));
+
+  LOG_MESSAGE(
+      TRITONSERVER_LOG_INFO,
+      (std::string("****** "
+                   "ModelInstanceState::ValidateOutputs"))
+          .c_str());
   THROW_IF_BACKEND_INSTANCE_ERROR(ValidateOutputs());
 }
 
