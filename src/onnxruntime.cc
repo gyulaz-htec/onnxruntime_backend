@@ -1279,7 +1279,7 @@ ModelInstanceState::ModelInstanceState(
                                             "ModelInstanceState::KIND_GPU + CreateMemoryInfo"))
                                    .c_str());
     THROW_IF_BACKEND_INSTANCE_ORT_ERROR(ort_api->CreateMemoryInfo(
-        "ROCm", OrtAllocatorType::OrtArenaAllocator, DeviceId(),
+        "Hip", OrtAllocatorType::OrtArenaAllocator, DeviceId(),
         OrtMemTypeDefault, &cuda_allocator_info_));
   }
 #endif //TRITON_ENABLE_ROCM
