@@ -624,8 +624,6 @@ ModelState::LoadModel(
               RETURN_IF_ORT_ERROR(
                   ort_api->SessionOptionsAppendExecutionProvider_MIGraphX(
                       soptions, &migx_options));
-              std::cout << "### IGraphX Execution Accelerator is set"
-                        << std::endl;
               LOG_MESSAGE(
                   TRITONSERVER_LOG_VERBOSE,
                   (std::string("MIGraphX Execution Accelerator is set for '") +
@@ -653,7 +651,7 @@ ModelState::LoadModel(
             TRITONSERVER_LOG_INFO,
             std::string("@@@ no exec accelerator found").c_str());
       }
-    } 
+    }
     else
     {
       LOG_MESSAGE(
@@ -706,7 +704,7 @@ ModelState::LoadModel(
   }
 #endif  // TRITON_ENABLE_GPU
 
-#ifdef TRITON_ENABLE_ROCM
+#if defined(TRITON_ENABLE_ROCM) && !defined(TRITON_ENABLE_ONNXRUNTIME_MIGRAPHX)
     // Default AMD GPU execution provider using ROCm
     // Using default values for everything other than device id and ROCM
     // stream
@@ -753,10 +751,6 @@ ModelState::LoadModel(
       }
     }
 
-    LOG_MESSAGE(
-        TRITONSERVER_LOG_INFO,
-        std::string("@@@ Trying to set up ROCM execution provider").c_str());
-
     RETURN_IF_ORT_ERROR(ort_api->SessionOptionsAppendExecutionProvider_ROCM(
         soptions, &rocm_options));
     LOG_MESSAGE(
@@ -765,7 +759,7 @@ ModelState::LoadModel(
          "' on device " + std::to_string(instance_group_device_id))
             .c_str());
   }
-#endif  // TRITON_ENABLE_ROCM
+#endif  // TRITON_ENABLE_ROCM && !TRITON_ENABLE_ONNXRUNTIME_MIGRAPHX
 
 #endif  // TRITON_ENABLE_GPU || TRITON_ENABLE_ROCM
 
