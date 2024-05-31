@@ -624,7 +624,7 @@ ModelState::LoadModel(
               RETURN_IF_ORT_ERROR(
                   ort_api->SessionOptionsAppendExecutionProvider_MIGraphX(
                       soptions, &migx_options));
-              std::cout << "### MIGraphX Execution Accelerator is set"
+              std::cout << "### IGraphX Execution Accelerator is set"
                         << std::endl;
               LOG_MESSAGE(
                   TRITONSERVER_LOG_VERBOSE,
@@ -920,22 +920,7 @@ ModelState::AutoCompleteConfig()
         break;
       }
     }
-
-
-    // Force GPU kind
-    kind = TRITONSERVER_INSTANCEGROUPKIND_GPU;
-    LOG_MESSAGE(
-        TRITONSERVER_LOG_INFO,
-        (std::string("### Forced Instancegroupkind set to: ") + " (" +
-         TRITONSERVER_InstanceGroupKindString(kind) + ")")
-            .c_str());
 #endif  // TRITON_ENABLE_GPU
-
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("### Instancegroupkind set to: ") + " (" +
-       TRITONSERVER_InstanceGroupKindString(kind) + ")")
-          .c_str());
 
     OrtSession* sptr = nullptr;
     RETURN_IF_ERROR(LoadModel(
