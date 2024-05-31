@@ -877,14 +877,14 @@ ModelState::AutoCompleteConfig()
     }
   }
 
-  // if ((input_cnt > 0) && (output_cnt > 0)) {
-  //   LOG_MESSAGE(
-  //       TRITONSERVER_LOG_INFO,
-  //       (std::string("skipping model configuration auto-complete for '") +
-  //        Name() + "': inputs and outputs already specified")
-  //           .c_str());
-  //   return nullptr;  // success
-  // }
+  if ((input_cnt > 0) && (output_cnt > 0)) {
+    LOG_MESSAGE(
+        TRITONSERVER_LOG_INFO,
+        (std::string("skipping model configuration auto-complete for '") +
+         Name() + "': inputs and outputs already specified")
+            .c_str());
+    return nullptr;  // success
+  }
 
   std::string artifact_name;
   RETURN_IF_ERROR(
