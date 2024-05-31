@@ -3069,9 +3069,8 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
 
   int32_t device_id;
   RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceDeviceId(instance, &device_id));
-  // Force GPU kind for modelinstance
-  TRITONSERVER_InstanceGroupKind kind = TRITONSERVER_InstanceGroupKind::TRITONSERVER_INSTANCEGROUPKIND_GPU;
-  // RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceKind(instance, &kind));
+  TRITONSERVER_InstanceGroupKind kind;
+  RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceKind(instance, &kind));
 
   LOG_MESSAGE(
       TRITONSERVER_LOG_INFO,
