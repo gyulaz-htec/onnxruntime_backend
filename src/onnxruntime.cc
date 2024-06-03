@@ -377,11 +377,6 @@ ModelState::LoadModel(
     const int32_t instance_group_device_id, std::string* model_path,
     OrtSession** session, OrtAllocator** default_allocator, cudaStream_t stream)
 {
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("@@@ Loading model with instance_group_kind: ") + " (" +
-       TRITONSERVER_InstanceGroupKindString(instance_group_kind) + ")")
-          .c_str());
   // Find the ONNX file that describes the model itself. If the model
   // configuration doesn't have an explicit model file specified then
   // use the default name ("model.onnx").
@@ -419,19 +414,6 @@ ModelState::LoadModel(
   std::unique_ptr<OrtSessionOptions, SessionOptionsDeleter> soptions_wrapper(
       soptions);
 
-
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO, std::string("@@@ Providers").c_str());
-  char** providers;
-  int providers_num;
-  RETURN_IF_ORT_ERROR(
-      ort_api->GetAvailableProviders(&providers, &providers_num));
-  for (int i = 0; i < providers_num; ++i)
-  {
-    LOG_MESSAGE(TRITONSERVER_LOG_INFO, providers[i]);
-  }
-  LOG_MESSAGE(TRITONSERVER_LOG_INFO, std::string("@@@@@@@@@@@@@").c_str());
-
   bool need_lock = false;
 
   // Add execution providers if they are requested.
@@ -440,22 +422,14 @@ ModelState::LoadModel(
 
   // GPU execution providers
 #if defined(TRITON_ENABLE_GPU) || defined(TRITON_ENABLE_ROCM)
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      std::string("@@@ GPU or ROCM enabled").c_str());
   if ((instance_group_kind == TRITONSERVER_INSTANCEGROUPKIND_GPU) ||
       (instance_group_kind == TRITONSERVER_INSTANCEGROUPKIND_AUTO)) {
-    LOG_MESSAGE(
-        TRITONSERVER_LOG_INFO, std::string("@@@ Has proper instancegroupkind").c_str());
     triton::common::TritonJson::Value optimization;
     if (model_config_.Find("optimization", &optimization)) {
       triton::common::TritonJson::Value eas;
       if (optimization.Find("execution_accelerators", &eas)) {
         triton::common::TritonJson::Value gpu_eas;
         if (eas.Find("gpu_execution_accelerator", &gpu_eas)) {
-          LOG_MESSAGE(
-              TRITONSERVER_LOG_INFO,
-              std::string("@@@ gpu_execution_accelerator found ").c_str());
           for (size_t ea_idx = 0; ea_idx < gpu_eas.ArraySize(); ea_idx++) {
             triton::common::TritonJson::Value ea;
             RETURN_IF_ERROR(gpu_eas.IndexAsObject(ea_idx, &ea));
@@ -565,9 +539,6 @@ ModelState::LoadModel(
 #endif  // TRITON_ENABLE_ONNXRUNTIME_TENSORRT
 #ifdef TRITON_ENABLE_ONNXRUNTIME_MIGRAPHX
             if (name == kMIGraphXExecutionAccelerator) {
-              LOG_MESSAGE(
-                  TRITONSERVER_LOG_INFO,
-                  std::string("@@@ Enabling mgx execution provider ").c_str());
               // create MIGraphX options with default values
               std::string int8_calibration_table_name;
               OrtMIGraphXProviderOptions migx_options{
@@ -641,7 +612,7 @@ ModelState::LoadModel(
           }
         }
       }
-    } 
+    }
 
 #ifdef TRITON_ENABLE_GPU
     // Default GPU execution provider.
@@ -737,7 +708,7 @@ ModelState::LoadModel(
     RETURN_IF_ORT_ERROR(ort_api->SessionOptionsAppendExecutionProvider_ROCM(
         soptions, &rocm_options));
     LOG_MESSAGE(
-        TRITONSERVER_LOG_INFO,
+        TRITONSERVER_LOG_VERBOSE,
         (std::string("ROCM Execution Accelerator is set for '") + Name() +
          "' on device " + std::to_string(instance_group_device_id))
             .c_str());
@@ -755,10 +726,6 @@ ModelState::LoadModel(
         triton::common::TritonJson::Value cpu_eas;
         if (eas.Find("cpu_execution_accelerator", &cpu_eas)) {
           for (size_t ea_idx = 0; ea_idx < cpu_eas.ArraySize(); ea_idx++) {
-            LOG_MESSAGE(
-                TRITONSERVER_LOG_INFO,
-                std::string("@@@ Setting up CPU execution provider")
-                    .c_str());
             triton::common::TritonJson::Value ea;
             RETURN_IF_ERROR(cpu_eas.IndexAsObject(ea_idx, &ea));
             std::string name;
@@ -1187,12 +1154,6 @@ ModelInstanceState::Create(
     ModelState* model_state, TRITONBACKEND_ModelInstance* triton_model_instance,
     ModelInstanceState** state)
 {
-    LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string(
-           "***** "
-           "ModelInstanceState::Create called"))
-          .c_str());
   try {
     *state = new ModelInstanceState(model_state, triton_model_instance);
   }
@@ -1213,11 +1174,6 @@ ModelInstanceState::ModelInstanceState(
       cuda_allocator_info_(nullptr), cpu_allocator_info_(nullptr),
       io_binding_(nullptr), output_buffer_(nullptr)
 {
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("****** "
-                   "ModelInstanceState::ModelInstanceState"))
-          .c_str());
   THROW_IF_BACKEND_INSTANCE_ERROR(model_state->LoadModel(
       ArtifactFilename(), Kind(), DeviceId(), &model_path_, &session_,
       &default_allocator_, CudaStream()));
@@ -1231,50 +1187,20 @@ ModelInstanceState::ModelInstanceState(
 #endif //TRITON_ENABLE_GPU
 
 #ifdef TRITON_ENABLE_ROCM
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO, (std::string("****** "
-                                          "ModelInstanceState::ROCM enabled"))
-                                 .c_str());
   if (Kind() == TRITONSERVER_INSTANCEGROUPKIND_GPU) {
-    LOG_MESSAGE(
-        TRITONSERVER_LOG_INFO, (std::string("****** "
-                                            "ModelInstanceState::KIND_GPU + CreateMemoryInfo"))
-                                   .c_str());
     THROW_IF_BACKEND_INSTANCE_ORT_ERROR(ort_api->CreateMemoryInfo(
         "Hip", OrtAllocatorType::OrtArenaAllocator, DeviceId(),
         OrtMemTypeDefault, &cuda_allocator_info_));
   }
 #endif //TRITON_ENABLE_ROCM
-
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("****** "
-                   "ModelInstanceState::AllocatorGetInfo"))
-          .c_str());
   THROW_IF_BACKEND_INSTANCE_ORT_ERROR(
       ort_api->AllocatorGetInfo(default_allocator_, &cpu_allocator_info_));
 
-
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("****** "
-                   "ModelInstanceState::CreateIoBinding"))
-          .c_str());
   THROW_IF_BACKEND_INSTANCE_ORT_ERROR(
       ort_api->CreateIoBinding(session_, &io_binding_));
 
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("****** "
-                   "ModelInstanceState::ort_api->CreateRunOptions"))
-          .c_str());
   THROW_IF_BACKEND_INSTANCE_ORT_ERROR(ort_api->CreateRunOptions(&runOptions_));
 
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("****** "
-                   "ModelInstanceState::read configs"))
-          .c_str());
   // Read configs that needs to be set in RunOptions
   triton::common::TritonJson::Value params;
   if (model_state->ModelConfig().Find("parameters", &params)) {
@@ -1297,10 +1223,6 @@ ModelInstanceState::ModelInstanceState(
     }
   }
 
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO, (std::string("****** "
-                                          "ModelInstanceState::read input configs"))
-                                 .c_str());
   size_t expected_input_cnt = 0;
   {
     triton::common::TritonJson::Value inputs;
@@ -1325,11 +1247,6 @@ ModelInstanceState::ModelInstanceState(
     }
   }
 
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("****** "
-                   "ModelInstanceState::sequence settings"))
-          .c_str());
   // If this is a sequence model then make sure that the required
   // inputs are present in the model and have the correct shape and
   // datatype.
@@ -1369,18 +1286,7 @@ ModelInstanceState::ModelInstanceState(
     }
   }
 
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("****** "
-                   "ModelInstanceState::ValidateInputs"))
-          .c_str());
   THROW_IF_BACKEND_INSTANCE_ERROR(ValidateInputs(expected_input_cnt));
-
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("****** "
-                   "ModelInstanceState::ValidateOutputs"))
-          .c_str());
   THROW_IF_BACKEND_INSTANCE_ERROR(ValidateOutputs());
 }
 
@@ -3036,27 +2942,16 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
 
   LOG_MESSAGE(
       TRITONSERVER_LOG_INFO,
-      (std::string("***** TRITONBACKEND_ModelInstanceInitialize: ") + name + " (" +
+      (std::string("TRITONBACKEND_ModelInstanceInitialize: ") + name + " (" +
        TRITONSERVER_InstanceGroupKindString(kind) + " device " +
        std::to_string(device_id) + ")")
           .c_str());
 
   // Get the model state associated with this instance's model.
   TRITONBACKEND_Model* model;
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("***** "
-                   "TRITONBACKEND_ModelInstanceInitialize::TRITONBACKEND_"
-                   "ModelInstanceModel "))
-          .c_str());
   RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceModel(instance, &model));
 
   void* vmodelstate;
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("***** "
-                   "TRITONBACKEND_ModelInstanceInitialize::TRITONBACKEND_ModelState"))
-          .c_str());
   RETURN_IF_ERROR(TRITONBACKEND_ModelState(model, &vmodelstate));
   ModelState* model_state = reinterpret_cast<ModelState*>(vmodelstate);
 
@@ -3072,42 +2967,16 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
   // Create a ModelInstanceState object and associate it with the
   // TRITONBACKEND_ModelInstance.
   ModelInstanceState* instance_state;
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string(
-           "***** "
-           "TRITONBACKEND_ModelInstanceInitialize::ModelInstanceState::Create"))
-          .c_str());
   RETURN_IF_ERROR(
       ModelInstanceState::Create(model_state, instance, &instance_state));
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string(
-           "***** "
-           "TRITONBACKEND_ModelInstanceInitialize::TRITONBACKEND_ModelInstanceSetState"))
-          .c_str());
   RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceSetState(
       instance, reinterpret_cast<void*>(instance_state)));
 
   if (lusage) {
-      LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string(
-           "***** "
-           "TRITONBACKEND_ModelInstanceInitialize::lusage enabled"))
-          .c_str());
     DeviceMemoryTracker::UntrackThreadMemoryUsage(lusage.get());
     TRITONSERVER_BufferAttributes** ba_array;
     uint32_t ba_len = 0;
-    LOG_MESSAGE(
-        TRITONSERVER_LOG_INFO, (std::string("***** "
-                                            "TRITONBACKEND_ModelInstanceInitialize::lusage->SerializeToBufferAttributes"))
-                                   .c_str());
     RETURN_IF_ERROR(lusage->SerializeToBufferAttributes(&ba_array, &ba_len));
-    LOG_MESSAGE(
-        TRITONSERVER_LOG_INFO, (std::string("***** "
-                                            "TRITONBACKEND_ModelInstanceInitialize::TRITONBACKEND_ModelInstanceReportMemoryUsage"))
-                                   .c_str());
     RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceReportMemoryUsage(
         instance, ba_array, ba_len));
   }
