@@ -624,8 +624,6 @@ ModelState::LoadModel(
               RETURN_IF_ORT_ERROR(
                   ort_api->SessionOptionsAppendExecutionProvider_MIGraphX(
                       soptions, &migx_options));
-              std::cout << "### IGraphX Execution Accelerator is set"
-                        << std::endl;
               LOG_MESSAGE(
                   TRITONSERVER_LOG_VERBOSE,
                   (std::string("MIGraphX Execution Accelerator is set for '") +
@@ -641,25 +639,9 @@ ModelState::LoadModel(
                  "' is requested")
                     .c_str());
           }
-        } else {
-          LOG_MESSAGE(
-              TRITONSERVER_LOG_INFO,
-              std::string("@@@ no gpu_execution_accelerator found").c_str());
         }
       }
-      else
-      {
-        LOG_MESSAGE(
-            TRITONSERVER_LOG_INFO,
-            std::string("@@@ no exec accelerator found").c_str());
-      }
     } 
-    else
-    {
-      LOG_MESSAGE(
-          TRITONSERVER_LOG_INFO,
-          std::string("@@@ no optimization found").c_str());
-    }
 
 #ifdef TRITON_ENABLE_GPU
     // Default GPU execution provider.
@@ -752,10 +734,6 @@ ModelState::LoadModel(
         rocm_options.tunable_op_max_tuning_duration_ms = tunable_op_max_tuning_ms;
       }
     }
-
-    LOG_MESSAGE(
-        TRITONSERVER_LOG_INFO,
-        std::string("@@@ Trying to set up ROCM execution provider").c_str());
 
     RETURN_IF_ORT_ERROR(ort_api->SessionOptionsAppendExecutionProvider_ROCM(
         soptions, &rocm_options));
