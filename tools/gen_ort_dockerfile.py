@@ -420,7 +420,6 @@ RUN mkdir -p /opt/onnxruntime/bin
         /opt/onnxruntime/include && \
         cp /workspace/build/${ONNXRUNTIME_BUILD_CONFIG}/libonnxruntime_providers_migraphx.so \
         /opt/onnxruntime/lib && \
-        cp /migraphx/build/*.deb /opt/onnxruntime/lib && \
         cp /migraphx/build/lib/*.so* /opt/onnxruntime/lib
     """
 
