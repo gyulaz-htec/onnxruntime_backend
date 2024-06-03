@@ -685,10 +685,9 @@ ModelState::LoadModel(
         (std::string("CUDA Execution Accelerator is set for '") + Name() +
          "' on device " + std::to_string(instance_group_device_id))
             .c_str());
-  }
 #endif  // TRITON_ENABLE_GPU
 
-#ifdef TRITON_ENABLE_ROCM
+#if defined(TRITON_ENABLE_ROCM) && !defined(TRITON_ENABLE_ONNXRUNTIME_MIGRAPHX)
     // Default AMD GPU execution provider using ROCm
     // Using default values for everything other than device id and ROCM
     // stream
@@ -742,8 +741,8 @@ ModelState::LoadModel(
         (std::string("ROCM Execution Accelerator is set for '") + Name() +
          "' on device " + std::to_string(instance_group_device_id))
             .c_str());
-  }
 #endif  // TRITON_ENABLE_ROCM
+  }
 
 #endif  // TRITON_ENABLE_GPU || TRITON_ENABLE_ROCM
 
